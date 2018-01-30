@@ -1,6 +1,10 @@
 <?php
-include('ITpings_configuration.php');
 
+/* DELETE THIS FILE FROM YOUR WEBSERVER AFTER YOUR TABLES HAVE BEEN CREATED */
+
+
+
+include('ITpings_configuration.php');
 
 /*  ================================================================================================
 
@@ -26,11 +30,13 @@ function createTable( $table , $idfield , $fields , $foreignkeys ){
             $sql .= "`".FIELD_CREATED_TIMESTAMP."` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP " . $comment . ",";
         }
         foreach ( $fields as $field ){
-//            $fieldcomment =
-            $sql .= "`$field[0]` $field[1]" . $comment . ",";
+            $fieldcomment = $comment;
+            $sql .= "`$field[0]` $field[1]" . $fieldcomment . ",";
         }
-        foreach ( $foreignkeys as $key ){
-            $sql .= "	FOREIGN KEY (`$key[0]`) $key[1],";
+        if( USE_REFERENTIAL_INTEGRITY ){
+            foreach ( $foreignkeys as $key ){
+                $sql .= "	FOREIGN KEY (`$key[0]`) $key[1],";
+            }
         }
         $sql .= "PRIMARY KEY (`$idfield`)";
     $sql .= ")";
@@ -60,10 +66,10 @@ function createTables(){
 
         ,[[ TTN_gtw_id              , TYPE_TTN_GTW_ID       ]
         ,[ TTN_gtw_trusted          , TYPE_TTN_TRUSTED_GTW  ]
-        ,[ TTN_latitude             , LATITUDE_ACCURACY     ]
-        ,[ TTN_longitude            , LONGITUDE_ACCURACY    ]
-        ,[ TTN_altitude             , ALTITUDE_ACCURACY     ]
-        ,[ TTN_location_source      , TYPE_LOCATION_SOURCE  ]
+        ,[ ITPINGS_LATITUDE         , LATITUDE_ACCURACY     ]
+        ,[ ITPINGS_LONGITUDE        , LONGITUDE_ACCURACY    ]
+        ,[ ITPINGS_ALTITUDE         , ALTITUDE_ACCURACY     ]
+        ,[ ITPINGS_LOCATIONSOURCE   , TYPE_LOCATION_SOURCE  ]
         ], NO_FOREIGNKEYS );
 
 
@@ -146,7 +152,7 @@ switch ( ADMIN_ACTION ) {
     case 'droptables':
         foreach( ITPINGS_TABLES as $index => $table ){
             add_QueryLog( "<h2>Drop Table: <b>$table</b></h2>" );
-            SQL_Query( "DROP TABLE IF EXISTS `$table`;" );
+            SQL_Query( "DROP TABLE IF EXISTS $table;" );
         }
         break;
     default:

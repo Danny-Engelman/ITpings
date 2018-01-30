@@ -61,10 +61,13 @@ function processGateway( $gateway ){
     $latitude       = $gateway[ TTN_latitude    ];
     $longitude      = $gateway[ TTN_longitude   ];
 
+    //detect moved Gateways
+    $condition =" AND ".ITPINGS_LATITUDE."=$latitude AND ".ITPINGS_LONGITUDE."=$longitude";
+
     $existing_row = lastTableEntry( TABLE_GATEWAYS
                                     , TTN_gtw_id
                                     , $request_gtw_id
-                                    , "AND latitude=$latitude AND longitude=$longitude" );
+                                    , $condition );
     if( $existing_row ){
         return $existing_row[ PRIMARYKEY_Gateway ];
     } else {
@@ -83,6 +86,7 @@ function processGateway( $gateway ){
 
 function processGateways( $request ){
     $gatewaysArray = $request[ TTN_metadata ][ TTN_gateways ];
+
     foreach ( $gatewaysArray as $gateway ){
 
         $gatewayID = processGateway( $gateway ); // Find known Gateway, else save new Gateway
@@ -100,6 +104,8 @@ function processGateways( $request ){
         $sql .= SQL_VALUES_CLOSE;
         SQL_Query( $sql );
     }
+
+    return $request;
 }
 
 function insertPing( $request ){
@@ -168,6 +174,8 @@ function processPayloadFields( $request ){
         $sql .= SQL_VALUES_CLOSE;
         SQL_Query( $sql );
     }
+
+    return $request;
 }
 
 
@@ -176,9 +184,11 @@ if ( IS_POST ) {
     // get POST content
     $request = json_decode( trim(file_get_contents("php://input")) , true);
 
-    $request = insertPing( $request );  // $request fields for app & device will be updated with keyID value
-    processGateways( $request );        // save to 'pinged_gateways' and 'gateways' tables
-    processPayloadFields( $request );   // save to 'sensors' and 'sensorvalues' tables
+    $request = insertPing( $request );      // $request fields for app & device will be updated with keyID value
+    $request = processGateways( $request ); // save to 'pinged_gateways' and 'gateways' tables
+    $request = processPayloadFields( $request );       // save to 'sensors' and 'sensorvalues' tables
+
+    echo "ITpings recorded a ping";
 
 } else { // it is a GET (JSON) request
 

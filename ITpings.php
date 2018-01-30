@@ -212,15 +212,16 @@ $queries = array(
 //    TABLE_SENSORS => "";
 //);
 
-//
-if (!IS_POST) {
-    $ebits = ini_get('error_reporting');
-    error_reporting($ebits ^ E_ALL);
+//PHP error reporting
+if ( !IS_POST ) {
+    $ebits = ini_get( 'error_reporting' );
+    error_reporting( $ebits ^ E_ALL );
 }
 
 $conn = mysqli_connect( DBHOST , DBUSER , DBPASSWORD , DBNAME ) or die("Could not connect database");
 
-$sqlLog = array();
+
+$sqlLog = array();              // log all SQL statements
 function add_QueryLog( $str ){
     global $sqlLog;
     $sqlLog[] = $str;
@@ -232,27 +233,27 @@ function showSQL_QueryLog(){
     }
 }
 
-function SQL_Query( $sql ){
+
+function SQL_Query( $sql , $returnJSON = FALSE ){
     global $conn;
     global $sqlLog;
 
     add_QueryLog( $sql );
 
-    $result = mysqli_query( $conn, $sql);
+    $result = mysqli_query( $conn, $sql) or die("incorrect SQL: ".$sql);
     if ( $result ) {
         if( strpos( $sql , 'INSERT' ) !== false){
             return mysqli_insert_id( $conn);
         } else {
-            $row = mysqli_fetch_assoc( $result);
-            //echo implode(COMMA,$row);
-            //todo return array of rows
-            return $row;
-
-//            $rows;
-//            while ($row = $result->fetch_assoc()) {
-//                printf ("%s (%s)\n", $row[ "Name" ], $row[ "CountryCode" ] );
-//            }
-
+            if( $returnJSON ){
+                $rows = array();
+                while($row = mysqli_fetch_assoc($result)) {
+                    $rows[] = $row;
+                }
+                print json_encode($rows);
+            } else {
+                return mysqli_fetch_assoc( $result); // return first $row
+            }
         }
     } else {
         echo "Error: " . $sql . "<br>" . mysqli_error( $conn);
@@ -650,17 +651,6 @@ function createTables(){
 }//end function createTables
 
 
-function toJSON( $sql ){
-    global $conn;
-
-    $result = mysqli_query( $conn, $sql) or die("incorrect SQL: ".$sql);
-    $rows = array();
-    while($row = mysqli_fetch_assoc($result)) {
-        $rows[] = $row;
-    }
-    print json_encode($rows);
-}
-
 if ( IS_POST ) {
 
     // get POST content
@@ -673,9 +663,11 @@ if ( IS_POST ) {
         processGateways( $request );        // save to 'pinged_gateways' and 'gateways' tables
         processPayloadFields( $request );   // save to 'sensors' and 'sensorvalues' tables
     }
-} else {
+
+} else { // it is an Admin or GET (JSON) request
 
     if( IS_ADMIN_ACCESS ){
+
         switch ( ADMIN_ACTION ) {
             case 'createtables':
                 createTables();
@@ -693,13 +685,16 @@ if ( IS_POST ) {
             default:
                echo "incorrect action" . $urlVars['action'];
         }
+        showSQL_QueryLog();
+
     } else {
+
         $query = $queries[ API_QUERY ];
         if( API_QUERY AND $query ){
-            toJSON ( $query );
+            SQL_Query( $query , true ); // true=return JSON object
         }
+
     }
-    showSQL_QueryLog();
 }
 
 mysqli_close($conn);

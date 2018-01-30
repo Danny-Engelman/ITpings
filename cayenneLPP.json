@@ -1,0 +1,48 @@
+{ "app_id": "365csi-cayenne",
+  "dev_id": "ttn_node_365csi_nl_002",
+  "hardware_serial": "0004A30B001C1B2B",
+  "port": 1,
+  "counter": 22180,
+  "payload_raw": "AQAAAgABAwAABAIBzAVnASIGZQFOB3EAOgBI/Ds=",
+  "payload_fields": {
+    "accelerometer_7": {
+      "x": 0.058,
+      "y": 0.072,
+      "z": -0.965
+    },
+    "analog_in_4": 4.6,
+    "digital_in_1": 0,
+    "digital_in_2": 1,
+    "digital_in_3": 0,
+    "luminosity_6": 334,
+    "temperature_5": 29
+  },
+  "metadata": {
+    "time": "2018-01-25T11:40:43.427237826Z",
+    "frequency": 867.1,
+    "modulation": "LORA",
+    "data_rate": "SF7BW125",
+    "coding_rate": "4/5",
+    "gateways": [
+      {
+        "gtw_id": "ttn_365csi_nl",
+        "gtw_trusted": true,
+        "timestamp": 1201768139,
+        "time": "2018-01-25T11:40:45Z",
+        "channel": 3,
+        "rssi": -54,
+        "snr": 8.25,
+        "rf_chain": 0,
+        "latitude": 52.316,
+        "longitude": 4.6604085,
+        "altitude": 2,
+        "location_source": "registry"
+      }
+    ],
+    "latitude": 52.315872,
+    "longitude": 4.6602583,
+    "altitude": 1,
+    "location_source": "registry"
+  },
+  "downlink_url": "https://integrations.thethingsnetwork.org/ttn-eu/api/v2/down/365csi-cayenne/rbaskets_in?key=ttn-account-v2.UYgPSqVuyRHcH9D1dDOlsHWInyuZcpYtjf1gpeWJAjs"
+}

@@ -1,34 +1,8 @@
 <?php
-/*
-    ITpings is a PHP script for the HTTP integration between your The Things Network application and your own MySQL Server
-
-    Create a database and access account in your MYSQL/PHPMyAdmin console (or MySQLWorkbench if you have it installed)
-    No need to create Tables by hand
-
-    See www.ITpings.nl for detail configuration instructions
-
-*/
-/* WARNING! Change to a value of your own choice! secret key gives admin access */
-/* CONFIG --> */ define('SECRETKEY'  , 'EDITME'     );
-
-/* Database access settings, if you don't know what to use, contact your Webserver Administrator */
-/* CONFIG --> */ define( 'DBHOST'    , 'localhost'  );//Typically the Web and Database server run on the same server: localhost
-/* CONFIG --> */ define( 'DBNAME'    , 'ITpings'    );
-
-/* update with your own Database user account */
-/* CONFIG --> */ define( 'DBUSER'    , 'engelmanDB' );
-/* CONFIG --> */ define( 'DBPASSWORD', 'nDnSCrTjaFMewDst' );
-
-
-
-
-/* ------------------------------------------------------------------------------------------------------- */
-/* OPTIONAL CONFIG , Nothing required for standard usage , No support given when you change anything below */
+include('ITpings_config_database_access.php');
 
 //Production configuration
 define( 'ALLOW_DROPTABLE'           , TRUE  );// WARNING! use TRUE value for development only! it will erase all your existing data in tables!
-define( 'SINGLE_TABLE_REQUESTS'     , FALSE );// set to TRUE to work with one single Database Table "Requests"
-define( 'USE_SENSOR_TABLES'         , TRUE  );// set to TRUE to work with 'sensor' and 'sensorvalues' tables
 
 //Database Table names
 define( 'TABLE_PREFIX' , 'ttn__' ); // optional double underscore groupes table list in PHPMyAdmin
@@ -37,19 +11,11 @@ define( 'TABLE_GATEWAYS'            , TABLE_PREFIX.'gateways'               );
 define( 'TABLE_DEVICES'             , TABLE_PREFIX.'devices'                );
 define( 'TABLE_PINGS'               , TABLE_PREFIX.'pings'                  );
 define( 'TABLE_PINGEDGATEWAYS'      , TABLE_PREFIX.'pinged_gateways'        );
-
-//tables where sensor values are stored
 define( 'TABLE_SENSORS'             , TABLE_PREFIX.'sensors'                );
 define( 'TABLE_SENSORVALUES'        , TABLE_PREFIX.'sensorvalues'           );
-define( 'TABLE_PINGPAYLOADFIELDS'   , TABLE_PREFIX.'ping_payload_fields'    );
-
-
-// when SINGLE_TABLE_REQUESTS=true , store whole request in a single table
-define( 'TABLE_REQUEST'             , TABLE_PREFIX.'requests'               );
 
 define( 'ITPINGS_TABLES'            , array(
                                              TABLE_PINGS
-                                            ,TABLE_PINGPAYLOADFIELDS
                                             ,TABLE_PINGEDGATEWAYS
 
                                             ,TABLE_GATEWAYS
@@ -61,7 +27,6 @@ define( 'ITPINGS_TABLES'            , array(
                                             ) );
 
 
-
 //ITpings Table field keys, beware they don't collide with the TTN JSON fieldname definitions below
 define( 'PRIMARYKEY_PREFIX'         , '_'                                   );
 define( 'PRIMARYKEY_Application'    , PRIMARYKEY_PREFIX . 'appid'           );
@@ -69,7 +34,6 @@ define( 'PRIMARYKEY_Device'         , PRIMARYKEY_PREFIX . 'devid'           );
 define( 'PRIMARYKEY_Gateway'        , PRIMARYKEY_PREFIX . 'gtwid'           );
 define( 'PRIMARYKEY_Ping'           , PRIMARYKEY_PREFIX . 'pingid'          );
 define( 'PRIMARYKEY_PingedGateway'  , PRIMARYKEY_PREFIX . 'pingedgtwid'     );
-define( 'PRIMARYKEY_PingPayload'    , PRIMARYKEY_PREFIX . 'pingpayloadid'   );
 define( 'PRIMARYKEY_Sensor'         , PRIMARYKEY_PREFIX . 'sensorid'        );
 define( 'PRIMARYKEY_SensorValue'    , PRIMARYKEY_PREFIX . 'sensorvalueid'   );
 
@@ -109,7 +73,7 @@ define( 'TTN_payload_fields'        , 'payload_fields'  );
 
 
 
-// the single Request table uses these; ITping reads the keys(=fieldnames) from the Payload and stores them in TABLE_PINGPAYLOADFIELDS or TABLE_SENSORS
+// the single Request table uses these; ITping reads the keys(=fieldnames) from the Payload and stores them in TABLE_SENSORS
 define( 'TTN_Cayenne_accelerometer' , 'accelerometer_7' );
 define( 'TTN_Cayenne_analog_in'     , 'analog_in_4'     );
 define( 'TTN_Cayenne_digital_in_1'  , 'digital_in_1'    );
@@ -272,58 +236,6 @@ function Boolean( $val ){
     return ($val='true' OR $val='TRUE' OR $val==1 ) ? 1 : 0;
 }
 
-//Dump every request in a single table, great for testing
-function insertRequest( $request ){
-        $sql = SQL_INSERT_INTO . TABLE_REQUESTS . SQL_VALUES_START;
-        $sql .= COMMA . Quoted( $request[ TTN_app_id            ] );
-        $sql .= COMMA . Quoted( $request[ TTN_dev_id            ] );
-        $sql .= COMMA . Quoted( $request[ TTN_hardware_serial   ] );
-        $sql .= COMMA . Valued( $request[ TTN_port              ] );
-        $sql .= COMMA . Valued( $request[ TTN_counter           ] );
-        $sql .= COMMA . Quoted( $request[ TTN_payload_raw       ] );
-
-    //Cayenne style payload
-    $payload = $request[ TTN_payload_fields ];
-        $sql .= COMMA . Valued  ( $payload[ TTN_Cayenne_accelerometer    ]['x'] );
-        $sql .= COMMA . Valued  ( $payload[ TTN_Cayenne_accelerometer    ]['y'] );
-        $sql .= COMMA . Valued  ( $payload[ TTN_Cayenne_accelerometer    ]['z'] );
-        $sql .= COMMA . Valued  ( $payload[ TTN_Cayenne_analog_in        ] );
-        $sql .= COMMA . Valued  ( $payload[ TTN_Cayenne_digital_in_1     ] );
-        $sql .= COMMA . Valued  ( $payload[ TTN_Cayenne_digital_in_2     ] );
-        $sql .= COMMA . Valued  ( $payload[ TTN_Cayenne_digital_in_3     ] );
-        $sql .= COMMA . Valued  ( $payload[ TTN_Cayenne_luminosity       ] );
-        $sql .= COMMA . Valued  ( $payload[ TTN_Cayenne_temperature      ] );
-
-    $metadata = $request[ TTN_metadata ];
-        $sql .= COMMA . Quoted  ( $metadata[ TTN_time             ] );
-        $sql .= COMMA . Valued  ( $metadata[ TTN_frequency        ] );
-        $sql .= COMMA . Quoted  ( $metadata[ TTN_modulation       ] );
-        $sql .= COMMA . Quoted  ( $metadata[ TTN_data_rate        ] );
-        $sql .= COMMA . Quoted  ( $metadata[ TTN_coding_rate      ] );
-    // a single request table can only save 1 gateway !!!!
-    $gateway = $request[ TTN_metadata ][ TTN_gateways ][0];
-        $sql .= COMMA . Quoted  ( $gateway[ TTN_gtw_id            ] );
-        $sql .= COMMA . Boolean ( $gateway[ TTN_gtw_trusted       ] );
-        $sql .= COMMA . Valued  ( $gateway[ TTN_timestamp         ] );
-        $sql .= COMMA . Quoted  ( $gateway[ TTN_time              ] );
-        $sql .= COMMA . Valued  ( $gateway[ TTN_channel           ] );
-        $sql .= COMMA . Valued  ( $gateway[ TTN_rssi              ] );
-        $sql .= COMMA . Valued  ( $gateway[ TTN_snr               ] );
-        $sql .= COMMA . Valued  ( $gateway[ TTN_rf_chain          ] );
-        $sql .= COMMA . Valued  ( $gateway[ TTN_latitude          ] );
-        $sql .= COMMA . Valued  ( $gateway[ TTN_longitude         ] );
-        $sql .= COMMA . Valued  ( $gateway[ TTN_altitude          ] );
-        $sql .= COMMA . Quoted  ( $gateway[ TTN_location_source   ] );
-    
-        $sql .= COMMA . Valued  ( $metadata[ TTN_latitude         ] );
-        $sql .= COMMA . Valued  ( $metadata[ TTN_longitude        ] );
-        $sql .= COMMA . Valued  ( $metadata[ TTN_altitude         ] );
-        $sql .= COMMA . Quoted  ( $metadata[ TTN_location_source  ] );
-        $sql .= COMMA . Quoted  ( $request[ TTN_downlink_url      ] );
-        $sql .= SQL_VALUES_CLOSE;
-
-    SQL_Query( $sql );
-}
 
 //  ====================================================================================== Functions for Multiple tables
 
@@ -468,24 +380,14 @@ function processPayloadFields( $request ){
             $value = implode( "," , $value );
         }
 
-        if( USE_SENSOR_TABLES ){
-            //$request values for Application and Device are Primary Keys retrieved in saving the ping first
-            $sensorID = processSensor( $request[ TTN_app_id ] , $request[ TTN_dev_id ] , $key , $value );
-            $sql = SQL_INSERT_INTO . TABLE_SENSORVALUES;
-            $sql .= SQL_VALUES_START;
-            $sql .= COMMA . Valued( $sensorID );
-            $sql .= COMMA . Quoted( $value  );
-            $sql .= SQL_VALUES_CLOSE;
-            SQL_Query( $sql );
-        } else {
-            $sql = SQL_INSERT_INTO . TABLE_PINGPAYLOADFIELDS;
-            $sql .= SQL_VALUES_START;
-            $sql .= COMMA . Valued( $request[PRIMARYKEY_Ping] );
-            $sql .= COMMA . Quoted( $key    );
-            $sql .= COMMA . Quoted( $value  );
-            $sql .= SQL_VALUES_CLOSE;
-            SQL_Query( $sql );
-        }
+        //$request values for Application and Device are Primary Keys retrieved in saving the ping first
+        $sensorID = processSensor( $request[ TTN_app_id ] , $request[ TTN_dev_id ] , $key , $value );
+        $sql = SQL_INSERT_INTO . TABLE_SENSORVALUES;
+        $sql .= SQL_VALUES_START;
+        $sql .= COMMA . Valued( $sensorID );
+        $sql .= COMMA . Quoted( $value  );
+        $sql .= SQL_VALUES_CLOSE;
+        SQL_Query( $sql );
     }
 }
 
@@ -497,7 +399,8 @@ function processPayloadFields( $request ){
         gateways
         pings
         pingedgateways
-        payloadfields
+        sensors
+        sensorvalues
 */
 
 function truncateTable( $table ){
@@ -614,9 +517,6 @@ function createTables(){
         );
 
 
-    if( USE_SENSOR_TABLES ){
-
-
         createTable( TABLE_SENSORS , PRIMARYKEY_Sensor
 
             ,[[ PRIMARYKEY_Application  , TYPE_FOREIGNKEY       ]
@@ -635,19 +535,6 @@ function createTables(){
             ,[[ PRIMARYKEY_Sensor       , IS_A_FOREIGNKEY_IN . TABLE_SENSORS . OnKey( PRIMARYKEY_Sensor )  ]]
             );
 
-    } else {
-
-        createTable( TABLE_PINGPAYLOADFIELDS , PRIMARYKEY_PingPayload
-
-            ,[[ PRIMARYKEY_Ping         , TYPE_FOREIGNKEY       ]
-            ,[  ITPINGS_SENSORNAME      , TYPE_PAYLOAD_KEY      ]
-            ,[  ITPINGS_SENSORVALUE     , TYPE_PAYLOAD_VALUE    ]
-            ]
-            ,[[ PRIMARYKEY_Ping         , IS_A_FOREIGNKEY_IN . TABLE_PINGS . OnKey( PRIMARYKEY_Ping )  ]]
-            );
-
-    }
-
 }//end function createTables
 
 
@@ -656,13 +543,9 @@ if ( IS_POST ) {
     // get POST content
     $request = json_decode( trim(file_get_contents("php://input")) , true);
 
-    if( SINGLE_TABLE_REQUESTS ){
-        insertRequest( $request );
-    } else {
-        $request = insertPing( $request );  // $request fields for app & device will be updated with keyID value
-        processGateways( $request );        // save to 'pinged_gateways' and 'gateways' tables
-        processPayloadFields( $request );   // save to 'sensors' and 'sensorvalues' tables
-    }
+    $request = insertPing( $request );  // $request fields for app & device will be updated with keyID value
+    processGateways( $request );        // save to 'pinged_gateways' and 'gateways' tables
+    processPayloadFields( $request );   // save to 'sensors' and 'sensorvalues' tables
 
 } else { // it is an Admin or GET (JSON) request
 

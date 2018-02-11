@@ -1,2 +1,3 @@
 # ITpings
-PHP
+
+HTTPintegration to PHP/MySQL 

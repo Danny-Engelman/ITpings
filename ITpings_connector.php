@@ -1,203 +1,500 @@
 <?php
 include('ITpings_configuration.php');
 
-//API queries
-define( 'TABLE_DEFAULT_SORT' , ' ORDER BY '.FIELD_CREATED_TIMESTAMP.' DESC' );
-$queries = array(
-    "devices"           => "SELECT * FROM " . TABLE_DEVICES         . TABLE_DEFAULT_SORT,
-    "applications"      => "SELECT * FROM " . TABLE_APPLICATIONS    . TABLE_DEFAULT_SORT,
-    "gateways"          => "SELECT * FROM " . TABLE_GATEWAYS        . TABLE_DEFAULT_SORT,
-    "pingedgateways"    => "SELECT * FROM " . TABLE_PINGEDGATEWAYS  . TABLE_DEFAULT_SORT,
-    "sensors"           => "SELECT * FROM " . TABLE_SENSORS         . TABLE_DEFAULT_SORT,
-    "sensorvalues"      => "SELECT * FROM " . TABLE_SENSORVALUES    . TABLE_DEFAULT_SORT,
-    "pings"             => "SELECT * FROM " . TABLE_PINGS           . TABLE_DEFAULT_SORT,
-);
+//region ===== processing POST request SQL functions ==============================================
 
-
-function lastTableEntry( $table , $field , $value , $conditions ){
-    $sql  = "SELECT * FROM $table ";
-    $sql .= " WHERE $field='$value' ";
-    $sql .= " $conditions ";
-    $sql .= " ORDER BY ".FIELD_CREATED_TIMESTAMP." DESC LIMIT 1;";
-    return SQL_Query( $sql );
+/**
+ * @param $table_name
+ * @param $fields_values
+ * @return array|null
+ */
+function SQL_insert($table_name, $fields_values)
+{
+    $sql = SQL_INSERT_INTO . $table_name;
+    $sql .= SQL_VALUES_START;
+    foreach ($fields_values as $value) {
+        $sql .= COMMA . $value;
+    }
+    $sql .= SQL_VALUES_CLOSE;
+    return SQL_Query($sql);
 }
 
-function processApp( $request ){
-    $existing_row = lastTableEntry( TABLE_APPLICATIONS
-                                    , TTN_app_id
-                                    , $request[ TTN_app_id]
-                                    , NO_CONDITIONS );
-    if( $existing_row ){
-        return $existing_row[ PRIMARYKEY_Application ];
+/**
+ * @param $event_type
+ * @param $event_label
+ * @param string $event_value
+ */
+function insert_TTN_Event($event_type, $event_label, $event_value = '')
+{
+    global $request;
+
+    SQL_insert(TABLE_EVENTS
+        , [//values
+            $request[PRIMARYKEY_Ping]
+            , Quoted($event_type)
+            , Quoted($event_label)
+            , Quoted($event_value)
+        ]);
+}
+
+/**
+ * @param $table_name
+ * @param $where_clause
+ * @param $order_by_field
+ * @return array|null
+ *
+ * Find a matching row in the database, or NULL for non found
+ */
+function SQL_find_existing_row($table_name, $where_clause, $order_by_field)
+{
+    return SQL_Query("SELECT * FROM $table_name WHERE $where_clause ORDER BY $order_by_field DESC LIMIT 1;");
+}
+
+/**
+ * find an existing Application or create a new Application
+ * sets the found/created ID value in the global $request object
+ */
+function process_Application()
+{
+    global $request;
+    $request_TTN_app_id = $request[TTN_app_id];
+
+    $table_row = SQL_find_existing_row(TABLE_APPLICATIONS
+        , TTN_app_id . "=" . Quoted($request_TTN_app_id)
+        , PRIMARYKEY_Application
+    );
+
+    if ($table_row) {
+        $id = $table_row[PRIMARYKEY_Application];
     } else {
-        $sql  = SQL_INSERT_INTO . TABLE_APPLICATIONS;
-        $sql .= SQL_VALUES_START;
-        $sql .= COMMA . Quoted( $request[ TTN_app_id ]      );
-        $sql .= COMMA . Quoted( 'Get description from TTN'  );
-        $sql .= SQL_VALUES_CLOSE;
-        return SQL_Query( $sql );
+        insert_TTN_Event(ENUM_EVENTTYPE_NewApp, $request_TTN_app_id);
+
+        $id = SQL_insert(TABLE_APPLICATIONS
+            , [//values
+                Quoted($request_TTN_app_id)
+                , Quoted('Get description from TTN')
+            ]);
     }
+
+    $request[PRIMARYKEY_Application] = $id;
 }
 
-function processDevice( $request ){
-    $existing_row = lastTableEntry( TABLE_DEVICES
-                                    , TTN_dev_id
-                                    , $request[ TTN_dev_id]
-                                    , NO_CONDITIONS );
-    if( $existing_row ){
-        return $existing_row[ PRIMARYKEY_Device ];
+/**
+ * find an existing Device or create a new Device
+ * sets the found/created ID value in the global $request object
+ */
+function process_Device()
+{
+    global $request;
+    $request_TTN_dev_id = $request[TTN_dev_id];
+
+    $table_row = SQL_find_existing_row(TABLE_DEVICES
+        , TTN_dev_id . "=" . Quoted($request_TTN_dev_id)
+        , PRIMARYKEY_Device
+    );
+
+    if ($table_row) {
+        $id = $table_row[PRIMARYKEY_Device];
     } else {
-        $sql  = SQL_INSERT_INTO . TABLE_DEVICES;
-        $sql .= SQL_VALUES_START;
-        $sql .= COMMA . Quoted( $request[ TTN_dev_id            ] );
-        $sql .= COMMA . Quoted( $request[ TTN_hardware_serial   ] );
-        $sql .= SQL_VALUES_CLOSE;
-        return SQL_Query( $sql );
+        insert_TTN_Event(ENUM_EVENTTYPE_NewDevice, $request_TTN_dev_id);
+
+        $id = SQL_insert(TABLE_DEVICES
+            , [//values
+                Quoted($request_TTN_dev_id)
+                , Quoted($request[TTN_hardware_serial])
+            ]);
     }
+    $request[PRIMARYKEY_Device] = $id;
 }
 
-function processGateway( $gateway ){
-    $request_gtw_id = $gateway[ TTN_gtw_id      ];
-    $latitude       = $gateway[ TTN_latitude    ];
-    $longitude      = $gateway[ TTN_longitude   ];
+/**
+ * find an existing Application/Device or create a new Application/Device
+ * sets the found/created ID value in the global $request object
+ */
+function process_ApplicationDevice_Information()
+{
+    global $request;
 
-    //detect moved Gateways
-    $condition =" AND ".ITPINGS_LATITUDE."=$latitude AND ".ITPINGS_LONGITUDE."=$longitude";
+    /**
+     * process Application and Device information in this request
+     *
+     * in TTN a Device can only be registered to ONE Application
+     * ITpings allows for any combination
+     */
+    process_Application();    // Find known Application, else save new App
+    process_Device(); // Find known Device, else save as new Device
 
-    $existing_row = lastTableEntry( TABLE_GATEWAYS
-                                    , TTN_gtw_id
-                                    , $request_gtw_id
-                                    , $condition );
-    if( $existing_row ){
-        return $existing_row[ PRIMARYKEY_Gateway ];
+    $table_row = SQL_find_existing_row(TABLE_APPLICATIONDEVICES
+        , PRIMARYKEY_Application . "=" . $request[PRIMARYKEY_Application] . " AND " . PRIMARYKEY_Device . "=" . $request[PRIMARYKEY_Device]
+        , PRIMARYKEY_ApplicationDevice
+    );
+
+    if ($table_row) {
+        $id = $table_row[PRIMARYKEY_ApplicationDevice];
     } else {
-        $sql  = SQL_INSERT_INTO . TABLE_GATEWAYS;
-        $sql .= SQL_VALUES_START;
-        $sql .= COMMA . Quoted( $request_gtw_id );
-        $sql .= COMMA . Quoted( $gateway[ TTN_gtw_trusted ] );
-        $sql .= COMMA . Valued( $latitude );
-        $sql .= COMMA . Valued( $longitude );
-        $sql .= COMMA . Valued( $gateway[ TTN_altitude          ] );
-        $sql .= COMMA . Quoted( $gateway[ TTN_location_source   ] );
-        $sql .= SQL_VALUES_CLOSE;
-        return SQL_Query( $sql );
+        //not Logging NewAppDev to _events Table
+
+        $id = SQL_insert(TABLE_APPLICATIONDEVICES
+            , [//values
+                Valued($request[PRIMARYKEY_Application])
+                , Valued($request[PRIMARYKEY_Device])
+            ]);
+    }
+
+    $request[PRIMARYKEY_ApplicationDevice] = $id;
+}
+
+/**
+ * @param $gtwid
+ * @param $latitude
+ * @param $longitude
+ * @param $distanceTolerance
+ * @return array|null
+ *
+ * Find matching Gateway ID
+ * OVER 15 metres distance, the Gateway is recorded again (as being moved)
+ */
+function find_Nearest_Gateway_With_Same_ID($gtwid, $latitude, $longitude, $distanceTolerance)
+{
+    $GTWradLAT = deg2rad($latitude);
+    $GTWradLON = deg2rad($longitude);
+    $radius = 6371;// 6371 for Kilometers, 3959 for Miles
+
+    $sql = "SELECT * , ";
+    $sql .= "($radius*acos(cos($GTWradLAT)*cos(radians(" . ITPINGS_LATITUDE . "))*cos(radians(" . ITPINGS_LONGITUDE . ")-$GTWradLON )+sin($GTWradLAT )*sin(radians(" . ITPINGS_LATITUDE . ")))) AS distance";
+    $sql .= " FROM " . TABLE_GATEWAYS;
+    $sql .= " WHERE " . TTN_gtw_id . "=" . Quoted($gtwid);
+
+    // GPS has inaccurate fixes, to prevent 'moving' Gateway recordings a tolerance for lat/lon is calculated
+    $sql .= " HAVING distance < $distanceTolerance ORDER BY distance;";
+
+    return SQL_Query($sql);
+}
+
+/**
+ * @param $gateway Object from the POST request
+ * @return number ID value of existing/new Gateway
+ *
+ * Find a Gateway or create a new Gateway
+ */
+function process_SingleGateway($gateway)
+{
+    $request_gtw_id = $gateway[TTN_gtw_id];
+    $latitude = $gateway[TTN_latitude];
+    $longitude = $gateway[TTN_longitude];
+
+    // GPS has inaccurate fixes, to prevent 'moving' Gateway recordings a tolerance for lat/lon is calculated
+    $table_row = find_Nearest_Gateway_With_Same_ID($request_gtw_id
+        , $latitude
+        , $longitude
+        , GATEWAY_POSITION_TOLERANCE);
+
+    if ($table_row) {
+        $id = $table_row[PRIMARYKEY_Gateway];
+    } else {
+        insert_TTN_Event(ENUM_EVENTTYPE_NewGateway, $request_gtw_id);
+
+        $id = SQL_insert(TABLE_GATEWAYS
+            , [//values
+                Quoted($request_gtw_id)
+                , Quoted($gateway[TTN_gtw_trusted])
+                , Valued($latitude)
+                , Valued($longitude)
+                , Valued($gateway[TTN_altitude])
+                , Quoted($gateway[TTN_location_source])
+            ]);
+    }
+
+    return $id;
+}
+
+/**
+ * Process all Gateways in the TTN POST Gateway array
+ *
+ * ONCE noticed duplicate Gateways being created
+ * The processed_Gateways Array is a safe guard against duplicate Gateways in the TTN Array
+ */
+function process_AllGateways()
+{
+    global $request;
+    $processedGateways_InRequest = array();
+    $request_TTN_Gateways = $request[TTN_metadata][TTN_gateways];
+
+    foreach ($request_TTN_Gateways as $gateway) {
+
+        $gatewayID = process_SingleGateway($gateway); // Find known Gateway, else save new Gateway
+
+        if (in_array($gatewayID, $processedGateways_InRequest)) {
+            insert_TTN_Event(ENUM_EVENTTYPE_Error, "Duplicate TTN Gateway" . $gatewayID, json_encode($request_TTN_Gateways));
+        } else {
+            array_push($processedGateways_InRequest, $gatewayID);
+
+            SQL_insert(TABLE_PINGEDGATEWAYS
+                , [//values
+                    Valued($request[PRIMARYKEY_Ping])
+                    , Valued($gatewayID)
+                    , Valued($gateway[TTN_timestamp])
+                    , Quoted($gateway[TTN_time])
+                    , Valued($gateway[TTN_channel])
+                    , Valued($gateway[TTN_rssi])
+                    , Valued($gateway[TTN_snr])
+                    , Valued($gateway[TTN_rf_chain])
+                ]);
+        }
     }
 }
 
-function processGateways( $request ){
-    $gatewaysArray = $request[ TTN_metadata ][ TTN_gateways ];
-
-    foreach ( $gatewaysArray as $gateway ){
-
-        $gatewayID = processGateway( $gateway ); // Find known Gateway, else save new Gateway
-
-        $sql = SQL_INSERT_INTO . TABLE_PINGEDGATEWAYS;
-        $sql .= SQL_VALUES_START;
-        $sql .= COMMA . Valued( $request[ PRIMARYKEY_Ping   ] );
-        $sql .= COMMA . Valued( $gatewayID                    );
-        $sql .= COMMA . Valued( $gateway[ TTN_timestamp     ] );
-        $sql .= COMMA . Quoted( $gateway[ TTN_time          ] );
-        $sql .= COMMA . Valued( $gateway[ TTN_channel       ] );
-        $sql .= COMMA . Valued( $gateway[ TTN_rssi          ] );
-        $sql .= COMMA . Valued( $gateway[ TTN_snr           ] );
-        $sql .= COMMA . Valued( $gateway[ TTN_rf_chain      ] );
-        $sql .= SQL_VALUES_CLOSE;
-        SQL_Query( $sql );
-    }
-
-    return $request;
-}
-
-function insertPing( $request ){
-    $request[ TTN_app_id ] = processApp( $request );    // Find known Application, else save new App
-    $request[ TTN_dev_id ] = processDevice( $request ); // Find known Device, else save as new Device
+/**
+ * Create a Ping entry as early as possible
+ * The _pingid can then be used in all other Tables (primarly ttn__events)
+ */
+function process_POSTrequest_Insert_Ping()
+{
+    global $request;
 
     $sql = SQL_INSERT_INTO . TABLE_PINGS;
-    $sql .= SQL_VALUES_START;
-    $sql .= COMMA . Valued( $request[ TTN_app_id        ] );
-    $sql .= COMMA . Valued( $request[ TTN_dev_id        ] );
-    $sql .= COMMA . Valued( $request[ TTN_port          ] );
-    $sql .= COMMA . Valued( $request[ TTN_counter       ] );
-    $sql .= COMMA . Quoted( $request[ TTN_downlink_url  ] );
-    $sql .= COMMA . Quoted( $request[ TTN_payload_raw   ] );
-
-    $metadata = $request[ TTN_metadata ];
-    $sql .= COMMA . Quoted( $metadata[ TTN_time             ] );
-    $sql .= COMMA . Valued( $metadata[ TTN_frequency        ] );
-    $sql .= COMMA . Quoted( $metadata[ TTN_modulation       ] );
-    $sql .= COMMA . Quoted( $metadata[ TTN_data_rate        ] );
-    $sql .= COMMA . Quoted( $metadata[ TTN_coding_rate      ] );
-    $sql .= COMMA . Valued( $metadata[ TTN_latitude         ] );
-    $sql .= COMMA . Valued( $metadata[ TTN_longitude        ] );
-    $sql .= COMMA . Valued( $metadata[ TTN_altitude         ] );
-    $sql .= COMMA . Quoted( $metadata[ TTN_location_source  ] );
+    $sql .= " (" . PRIMARYKEY_Ping . ") ";
+    $sql .= SQL_VALUES_START; // CONSTANT already contains NULL value, forcing autoIncrement on ID field
     $sql .= SQL_VALUES_CLOSE;
 
-    $request[ PRIMARYKEY_Ping ] = SQL_Query( $sql );
-
-    return $request;
+    $request[PRIMARYKEY_Ping] = SQL_Query($sql);
 }
 
-function processSensor( $app_id , $dev_id , $key ){
-    $existing_row = lastTableEntry( TABLE_SENSORS
-                                    , PRIMARYKEY_Application
-                                    , $app_id
-                                    ,    " AND ".PRIMARYKEY_Device."='".$dev_id."'"
-                                       . " AND ".ITPINGS_SENSORNAME."='".$key."'"
-                                    );
-    if( $existing_row ){
-        return $existing_row[ PRIMARYKEY_Sensor ];
+/**
+ * Now update the Pings Table with data from the POST request
+ */
+function process_POSTrequest_Update_Ping()
+{
+    global $request;
+
+    $sql = "UPDATE " . TABLE_PINGS . " SET ";
+    $sql .= PRIMARYKEY_ApplicationDevice . "=" . Valued($request[PRIMARYKEY_ApplicationDevice]);
+    $sql .= COMMA . TTN_port . "=" . Valued($request[TTN_port]);
+    $sql .= COMMA . TTN_counter . "=" . Valued($request[TTN_counter]);
+
+    //create a shorter string by removing the baseparh to save Database bytes
+    $downlink_url = str_replace(TTN_DOWNLINKROOT, "", $request[TTN_downlink_url]);
+    $sql .= COMMA . TTN_downlink_url . "=" . Quoted($downlink_url);
+    $sql .= COMMA . TTN_payload_raw . "=" . Quoted($request[TTN_payload_raw]);
+
+    $metadata = $request[TTN_metadata];
+    $sql .= COMMA . ITPINGS_TIME . "=" . Quoted($metadata[TTN_time]);
+    $sql .= COMMA . ITPINGS_FREQUENCY . "=" . Valued($metadata[TTN_frequency]);
+    $sql .= COMMA . ITPINGS_MODULATION . "=" . Quoted($metadata[TTN_modulation]);
+    $sql .= COMMA . ITPINGS_DATA_RATE . "=" . Quoted($metadata[TTN_data_rate]);
+    $sql .= COMMA . ITPINGS_CODING_RATE . "=" . Quoted($metadata[TTN_coding_rate]);
+    $sql .= COMMA . ITPINGS_LATITUDE . "=" . Valued($metadata[TTN_latitude]);
+    $sql .= COMMA . ITPINGS_LONGITUDE . "=" . Valued($metadata[TTN_longitude]);
+    $sql .= COMMA . ITPINGS_ALTITUDE . "=" . Valued($metadata[TTN_altitude]);
+    $sql .= COMMA . ITPINGS_LOCATIONSOURCE . "=" . Quoted($metadata[TTN_location_source]);
+    $sql .= " WHERE " . PRIMARYKEY_Ping . "=" . $request[PRIMARYKEY_Ping];
+
+    SQL_Query($sql);
+}
+
+/**
+ * @param $sensor_name
+ * @return number ID value of existing/new Sensor
+ *
+ * Find a Sensor or create a new Sensor
+ */
+function process_OneSensor($sensor_name)
+{
+    global $request;
+
+    $app_dev_id = $request[PRIMARYKEY_ApplicationDevice];
+
+    $table_row = SQL_find_existing_row(TABLE_SENSORS
+        , PRIMARYKEY_ApplicationDevice . "=$app_dev_id AND " . ITPINGS_SENSORNAME . "=" . Quoted($sensor_name)
+        , PRIMARYKEY_Sensor
+    );
+    if ($table_row) {
+        $id = $table_row[PRIMARYKEY_Sensor];
     } else {
-        $sql  = SQL_INSERT_INTO . TABLE_SENSORS;
-        $sql .= SQL_VALUES_START;
-        $sql .= COMMA . Quoted( $app_id );
-        $sql .= COMMA . Quoted( $dev_id );
-        $sql .= COMMA . Quoted( $key    );
-        $sql .= SQL_VALUES_CLOSE;
-        return SQL_Query( $sql );
+        insert_TTN_Event(ENUM_EVENTTYPE_NewSensor, $request[TTN_dev_id], $sensor_name);
+
+        $id = SQL_insert(TABLE_SENSORS
+            , [//values
+                Quoted($app_dev_id)
+                , Quoted($sensor_name)
+            ]);
+    }
+
+    return $id;
+}
+
+
+/**
+ * @param $sensor_name
+ * @param $sensor_value
+ */
+function check_Event_Trigger_For_Sensor($sensor_name, $sensor_value)
+{
+    global $request;
+
+    $IS_BUTTONCLICKED = ($sensor_name === TTN_Cayenne_digital_in_1 && $sensor_value === 1);
+
+    if ($IS_BUTTONCLICKED) {
+        insert_TTN_Event(ENUM_EVENTTYPE_Trigger, 'ButtonClicked', $request[TTN_dev_id]);
     }
 }
 
-function processPayloadFields( $request ){
-    foreach ( $request[ TTN_payload_fields ] as $key => $value ) {
+/**
+ * Process TTN POST PayLoad Object
+ */
+function process_Sensors_From_PayloadFields()
+{
+    global $request;
 
-        if ( is_array( $value ) ){
-            $value = implode( "," , $value );
+    foreach ($request[TTN_payload_fields] as $sensor_name => $sensor_value) {
+
+        /**
+         * Convert nested objects (like TTN x,y,z movements to a CSV String
+         */
+        if (is_array($sensor_value)) {
+            $sensor_value = implode(",", $sensor_value);
         }
 
-        //$request values for Application and Device are Primary Keys retrieved in saving the ping first
-        $sensorID = processSensor( $request[ TTN_app_id ] , $request[ TTN_dev_id ] , $key , $value );
-        $sql = SQL_INSERT_INTO . TABLE_SENSORVALUES;
-        $sql .= SQL_VALUES_START;
-        $sql .= COMMA . Valued( $sensorID );
-        $sql .= COMMA . Quoted( $value  );
-        $sql .= SQL_VALUES_CLOSE;
-        SQL_Query( $sql );
-    }
+        $sensor_ID = process_OneSensor($sensor_name);
 
-    return $request;
+        SQL_insert(TABLE_SENSORVALUES
+            , [//values
+                $request[PRIMARYKEY_Ping]
+                , Valued($sensor_ID)
+                , Quoted($sensor_value)
+            ]);
+
+        check_Event_Trigger_For_Sensor($sensor_name, $sensor_value);
+    }
+}
+
+//endregion == processing POST request SQL functions ==============================================
+
+
+//API queries
+$queries = array(
+    "devices"
+    => "SELECT * FROM " . TABLE_DEVICES . " ORDER BY " . PRIMARYKEY_Device . " DESC LIMIT 10;",
+    "applications"
+    => "SELECT * FROM " . TABLE_APPLICATIONS . " ORDER BY " . PRIMARYKEY_Application . " DESC LIMIT 10;",
+    "gateways"
+    => "SELECT * FROM " . TABLE_GATEWAYS . " ORDER BY " . PRIMARYKEY_Gateway . " DESC LIMIT 10;",
+    "pingedgateways"
+    => "SELECT * FROM " . TABLE_PINGEDGATEWAYS . " ORDER BY " . PRIMARYKEY_PingedGateway . " DESC LIMIT 10;",
+    "sensors"
+    => "SELECT * FROM " . TABLE_SENSORS . " ORDER BY " . PRIMARYKEY_Sensor . " DESC LIMIT 10;",
+    "sensorvalues"
+    => "SELECT * FROM " . TABLE_SENSORVALUES . " ORDER BY " . PRIMARYKEY_SensorValue . " DESC LIMIT 30;",
+    "pings"
+    => "SELECT * FROM " . TABLE_PINGS . " ORDER BY " . PRIMARYKEY_Ping . " DESC LIMIT 10;",
+    "application_devices"
+    => "SELECT * FROM " . TABLE_APPLICATIONDEVICES . " ORDER BY " . PRIMARYKEY_ApplicationDevice . " DESC LIMIT 10;",
+);
+
+function process_Query()
+{
+    global $urlVars;
+    $table_name = false;
+
+    //user can only request for limitted table/view names
+    switch (API_QUERY) {
+        case TABLE_EVENTS:
+        case TABLE_POSTREQUESTS:
+        case TABLE_APPLICATIONS:
+        case TABLE_DEVICES:
+        case TABLE_APPLICATIONDEVICES:
+        case TABLE_GATEWAYS:
+        case TABLE_PINGS:
+        case TABLE_PINGEDGATEWAYS:
+        case TABLE_SENSORS:
+        case TABLE_SENSORVALUES:
+        case VIEWNAME_EVENTS:
+        case VIEWNAME_SENSORVALUES:
+        case VIEWNAME_PINGEDGATEWAYS:
+        case VIEWNAME_APPLICATIONDEVICES:
+            $table_name = API_QUERY;
+    }
+    if ($table_name) {
+        //built a safe SQL query
+        $where = "";
+        $order = "";
+        $limit = "";
+        foreach (VALID_QUERY_PARAMETERS as $parameter) {
+            $parameter_value = SQL_Injection_Save_OneWordString($urlVars[$parameter]);
+            if ($parameter_value) {
+                $HAS_SEPARATOR = strpos($parameter_value, QUERY_PARAMETER_SEPARATOR) !== FALSE;
+                $and = $where === "" ? "" : " AND ";
+                switch ($parameter) {
+                    case QUERY_PARAMETER_INTERVAL:
+                        //https://dev.mysql.com/doc/refman/5.7/en/date-and-time-functions.html#function_date-add
+                        $interval_unit = strtoupper($urlVars[QUERY_PARAMETER_INTERVALUNIT]);
+                        if (!in_array($interval_unit, QUERY_ALLOWED_INTERVALUNITS)) {
+                            $interval_unit = 'HOUR';
+                        }
+                        $where .= $and . ITPINGS_CREATED_TIMESTAMP . " > DATE_SUB(NOW(), INTERVAL " . (int)$parameter_value . " " . $interval_unit . ")";
+                        break;
+                    case QUERY_PARAMETER_INTERVALUNIT:
+                        break;
+                    case QUERY_PARAMETER_ORDERBY:
+                        if ($HAS_SEPARATOR) {
+                            $orderbyfields = [];
+                            //accept only valid fieldnames
+                            foreach (explode(QUERY_PARAMETER_SEPARATOR, $parameter_value) as $fieldname) {
+                                if (in_array($fieldname, VALID_QUERY_PARAMETERS)) $orderbyfields[] .= $fieldname;
+                            }
+                            $parameter_value = implode(QUERY_PARAMETER_SEPARATOR, $orderbyfields);
+                        }
+                        $order_sort = $urlVars[QUERY_PARAMETER_ORDERSORT] === "DESC" ? "DESC" : "ASC";
+                        $order .= " ORDER BY " . $parameter_value . " " . $order_sort;
+                        break;
+                    case QUERY_PARAMETER_LIMIT:
+                        $limit = " LIMIT " . Valued($parameter_value);
+                        break;
+                    default:
+                        if ($HAS_SEPARATOR) {
+                            $where .= $and . "$parameter IN (" . $parameter_value . ")";//todo allow for strings
+                        } else {
+                            $parameter_value = (is_numeric($parameter_value) ? Valued($parameter_value) : Quoted($parameter_value));
+                            $where .= $and . "$parameter=" . $parameter_value;
+                        }
+                        break;
+                }
+            }
+        }
+        $sql = "SELECT * FROM $table_name";
+        if ($where !== "") $sql .= " WHERE " . $where;
+        $sql .= $order . ($limit === "" ? " LIMIT 1000" : $limit); //default LIMIT
+        echo $sql;
+        SQL_Query($sql, TRUE);
+    }
 }
 
 
-if ( IS_POST ) {
+//region Main code
+if (IS_POST) {
 
-    // get POST content
-    $request = json_decode( trim(file_get_contents("php://input")) , true);
+    $POST_body = trim(file_get_contents("php://input"));
 
-    $request = insertPing( $request );      // $request fields for app & device will be updated with keyID value
-    $request = processGateways( $request ); // save to 'pinged_gateways' and 'gateways' tables
-    $request = processPayloadFields( $request );       // save to 'sensors' and 'sensorvalues' tables
+    if (SAVE_BARE_POST_REQUESTS) {
+        SQL_Query("INSERT INTO " . TABLE_POSTREQUESTS . "(" . ITPINGS_POST_body . ") VALUES(" . Quoted($POSTbody) . ")");
+    }
 
-    echo "ITpings recorded a ping";
+    //global $request object processed by all above functions
+    $request = json_decode($POST_body, TRUE); // TRUE return as Associative Array
+
+    process_POSTrequest_Insert_Ping();      // create new _pingid in database asap
+    process_AllGateways();                  // save to 'pinged_gateways' and 'gateways' tables
+    process_ApplicationDevice_Information();
+    process_Sensors_From_PayloadFields();   // save to 'sensors' and 'sensorvalues' tables
+    process_POSTrequest_Update_Ping();
+
+    echo "ITpings recorded a ping: " . $request[PRIMARYKEY_Ping];
 
 } else { // it is a GET (JSON) request
-
-        $query = $queries[ API_QUERY ];
-        if( API_QUERY AND $query ){
-            SQL_Query( $query , true ); // true=return JSON object
-        }
-
+    process_Query();
 }
+//endregion
 
 mysqli_close($conn);
-?>
+
+// lat/lon display

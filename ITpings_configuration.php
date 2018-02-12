@@ -1,28 +1,10 @@
 <?php
-//region ===== REQUIRED CONFIGURATION =============================================================
-/** Database access settings, if you don't know what to use, contact your Webserver Administrator **/
-
-define('DBHOST', 'localhost');      // Typically the Web and Database server run on the same server: localhost
-define('DBNAME', 'ITpings');        // The database name given by your Database Administrator
-
-/* update with your own Database user account */
-define('DBUSER', 'engelmanDB');
-define('DBPASSWORD', 'nDnSCrTjaFMewDst');
-
-define('SAVE_BARE_POST_REQUESTS', TRUE); // set to FALSE in Production, used for debugging purposes only
-
-//endregion == REQUIRED CONFIGURATION =============================================================
+include('ITpings_access_configuration_DANNY.php');
 
 /** Strip this string from the ping Request to store shorter URI in database **/
 define('TTN_DOWNLINKROOT', 'https://integrations.thethingsnetwork.org/ttn-eu/api/v2/down/');
 
-// GPS has inaccurate fixes, to prevent 'moving' Gateway recordings a tolerance for lat/lon is calculated
-// Gateways outside this tolerance will be recorded as new (moved) Gateway
-define('GATEWAY_POSITION_TOLERANCE', '0.015');      // 15 meters
-
-
 define('USE_REFERENTIAL_INTEGRITY', TRUE);  // FALSE will not enforce Foreign Keys
-
 
 /**
  * Database Table names
@@ -36,7 +18,6 @@ define('TABLE_APPLICATIONS', TABLE_PREFIX . 'applications');
 define('TABLE_DEVICES', TABLE_PREFIX . 'devices');
 define('TABLE_APPLICATIONDEVICES', TABLE_PREFIX . 'application_devices');
 define('TABLE_GATEWAYS', TABLE_PREFIX . 'gateways');
-define('TABLE_FREQUENCIES', TABLE_PREFIX . 'frequencies');
 define('TABLE_PINGS', TABLE_PREFIX . 'pings');
 define('TABLE_PINGEDGATEWAYS', TABLE_PREFIX . 'pinged_gateways');
 define('TABLE_SENSORS', TABLE_PREFIX . 'sensors');
@@ -49,7 +30,6 @@ define('ITPINGS_TABLES', array(
 , TABLE_SENSORS
 , TABLE_PINGEDGATEWAYS
 , TABLE_GATEWAYS
-, TABLE_FREQUENCIES
 , TABLE_PINGS
 , TABLE_APPLICATIONDEVICES
 , TABLE_DEVICES
@@ -64,7 +44,6 @@ define('PRIMARYKEY_Events', PRIMARYKEY_PREFIX . 'eventid');
 define('PRIMARYKEY_POSTrequests', PRIMARYKEY_PREFIX . 'postid');
 define('PRIMARYKEY_Application', PRIMARYKEY_PREFIX . 'appid');
 define('PRIMARYKEY_Device', PRIMARYKEY_PREFIX . 'devid');
-define('PRIMARYKEY_Frequency', PRIMARYKEY_PREFIX . 'frequency');
 define('PRIMARYKEY_ApplicationDevice', PRIMARYKEY_PREFIX . 'appdevid');
 define('PRIMARYKEY_Gateway', PRIMARYKEY_PREFIX . 'gtwid');
 define('PRIMARYKEY_Ping', PRIMARYKEY_PREFIX . 'pingid');
@@ -85,6 +64,9 @@ define('TTN_hardware_serial', 'hardware_serial');
 define('TTN_latitude', 'latitude');
 define('TTN_longitude', 'longitude');
 define('TTN_altitude', 'altitude');
+
+// GPS has inaccurate fixes, to prevent 'moving' Gateway recordings a tolerance for lat/lon is calculated
+define('GATEWAY_POSITION_TOLERANCE', '0.015');      // 15 meters
 
 //fieldnames in TTN JSON format
 define('TTN_gtw_trusted', 'gtw_trusted');
@@ -119,6 +101,7 @@ define('TTN_Cayenne_luminosity', 'luminosity_6');
 define('TTN_Cayenne_temperature', 'temperature_5');
 
 //endregion == (TTN) THE THINGS NETWORK JSON FIELDNAMES ===========================================
+
 
 
 // ITpings SQL schema
@@ -202,7 +185,6 @@ define('TYPE_LOCATION_SOURCE', 'VARCHAR(16)');  // ?? "registry" what else?
 define('TYPE_PAYLOAD_KEY', 'VARCHAR(256)');
 define('TYPE_PAYLOAD_VALUE', 'VARCHAR(1024)');
 
-
 //QUERY_DEFINITIONS
 /**
  * Parameters that can be used in GET/URL queries
@@ -254,11 +236,15 @@ define('LASTENTRY', " ORDER BY " . ITPINGS_CREATED_TIMESTAMP . " DESC LIMIT 1;")
 define('ITpings_PrimaryKey_In_Table', 'ITpings PrimaryKey in ');
 
 
+
 //process QueryString variables
 $urlVars = array();
 parse_str($_SERVER['QUERY_STRING'], $urlVars);
 define('ADMIN_ACTION', $urlVars['action']);
 define('API_QUERY', $urlVars['query']);
+
+
+
 
 
 //region Database usage

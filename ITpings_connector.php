@@ -12,8 +12,9 @@ function SQL_insert($table_name, $fields_values)
 {
     $sql = SQL_INSERT_INTO . $table_name;
     $sql .= SQL_VALUES_START;
-    foreach ($fields_values as $value) {
-        $sql .= COMMA . $value;
+    foreach ($fields_values as $index => $value) {
+        if ($index > 0) $sql .= COMMA;
+        $sql .= $value;
     }
     $sql .= SQL_VALUES_CLOSE;
     return SQL_Query($sql);
@@ -281,23 +282,6 @@ function process_AllGateways()
 }
 
 /**
- * Create a Ping entry as early as possible
- * The _pingid can then be used in all other Tables (primarly ttn__events)
- */
-function process_POSTrequest_Insert_Ping()
-{
-    global $request;
-
-    $sql = SQL_INSERT_INTO . TABLE_PINGS;
-    $sql .= " (" . PRIMARYKEY_Ping . ") ";
-    $sql .= SQL_VALUES_START;
-    $sql .= "NULL"; //  AutoIncrement Primary Key in this Table
-    $sql .= SQL_VALUES_CLOSE;
-
-    $request[PRIMARYKEY_Ping] = SQL_Query($sql);
-}
-
-/**
  * Now update the Pings Table with data from the POST request
  */
 function process_POSTrequest_Update_Ping()
@@ -416,106 +400,90 @@ function process_Sensors_From_PayloadFields()
 
 //endregion == processing POST request SQL functions ==============================================
 
-
-//API queries
-$queries = array(
-    "devices"
-    => "SELECT * FROM " . TABLE_DEVICES . " ORDER BY " . PRIMARYKEY_Device . " DESC LIMIT 10;",
-    "applications"
-    => "SELECT * FROM " . TABLE_APPLICATIONS . " ORDER BY " . PRIMARYKEY_Application . " DESC LIMIT 10;",
-    "gateways"
-    => "SELECT * FROM " . TABLE_GATEWAYS . " ORDER BY " . PRIMARYKEY_Gateway . " DESC LIMIT 10;",
-    "pingedgateways"
-    => "SELECT * FROM " . TABLE_PINGEDGATEWAYS . " ORDER BY " . PRIMARYKEY_Ping . " DESC LIMIT 10;",
-    "sensors"
-    => "SELECT * FROM " . TABLE_SENSORS . " ORDER BY " . PRIMARYKEY_Sensor . " DESC LIMIT 10;",
-    "sensorvalues"
-    => "SELECT * FROM " . TABLE_SENSORVALUES . " ORDER BY " . PRIMARYKEY_Ping . " DESC LIMIT 30;",
-    "pings"
-    => "SELECT * FROM " . TABLE_PINGS . " ORDER BY " . PRIMARYKEY_Ping . " DESC LIMIT 10;",
-    "application_devices"
-    => "SELECT * FROM " . TABLE_APPLICATIONDEVICES . " ORDER BY " . PRIMARYKEY_ApplicationDevice . " DESC LIMIT 10;",
-);
-
 function process_Query_with_QueryString_Parameters()
 {
-    global $queries;
     global $urlVars;
     $sql = "";
-    $table_name = false;
 
-    if ($queries[API_QUERY]) {
-        $sql = $queries[API_QUERY];
-    } else {
-        //user can only request for limitted table/view names
-        switch (API_QUERY) {
-            case TABLE_EVENTS:
-            case TABLE_POSTREQUESTS:
-            case TABLE_APPLICATIONS:
-            case TABLE_DEVICES:
-            case TABLE_APPLICATIONDEVICES:
-            case TABLE_GATEWAYS:
-            case TABLE_PINGS:
-            case TABLE_PINGEDGATEWAYS:
-            case TABLE_SENSORS:
-            case TABLE_SENSORVALUES:
-            case VIEWNAME_EVENTS:
-            case VIEWNAME_SENSORVALUES:
-            case VIEWNAME_PINGEDGATEWAYS:
-            case VIEWNAME_APPLICATIONDEVICES:
-                $table_name = API_QUERY;
-        }
-        if ($table_name) {
-            //built a safe SQL query
-            $where = "";
-            $order = "";
-            $limit = "";
-            foreach (VALID_QUERY_PARAMETERS as $parameter) {
-                $parameter_value = SQL_InjectionSave_OneWordString($urlVars[$parameter]);
-                if ($parameter_value) {
-                    $PARAMETER_HAS_SEPARATOR = strpos($parameter_value, QUERY_PARAMETER_SEPARATOR) !== FALSE;
-                    $and = $where === "" ? "" : " AND ";
-                    switch ($parameter) {
-                        case QUERY_PARAMETER_INTERVAL:
-                            //https://dev.mysql.com/doc/refman/5.7/en/date-and-time-functions.html#function_date-add
-                            $interval_unit = strtoupper($urlVars[QUERY_PARAMETER_INTERVALUNIT]);
-                            if (!in_array($interval_unit, QUERY_ALLOWED_INTERVALUNITS)) {
-                                $interval_unit = 'HOUR';
+    $table_name = TABLE_PREFIX . $urlVars['query'];
+
+    /**
+     * User can only request for limitted table/view names
+     * This is the place to deny access to some Tables
+     */
+    switch ($table_name) {
+        case TABLE_EVENTS:
+        case TABLE_POSTREQUESTS:
+        case TABLE_APPLICATIONS:
+        case TABLE_DEVICES:
+            //case TABLE_APPLICATIONDEVICES:// User can not access this table
+        case TABLE_GATEWAYS:
+        case TABLE_PINGS:
+        case TABLE_PINGEDGATEWAYS:
+        case TABLE_SENSORS:
+        case TABLE_SENSORVALUES:
+        case VIEWNAME_EVENTS:
+        case VIEWNAME_SENSORVALUES:
+        case VIEWNAME_PINGEDGATEWAYS:
+        case VIEWNAME_APPLICATIONDEVICES:
+            break;
+        default:
+            $table_name = false;
+            break;
+    }
+
+    if ($table_name) {
+        /**
+         * Built a safe SQL query
+         * */
+        $where = "";
+        $order = "";
+        $limit = "";
+        foreach (VALID_QUERY_PARAMETERS as $parameter) {
+            $parameter_value = SQL_InjectionSave_OneWordString($urlVars[$parameter]);
+            if ($parameter_value) {
+                $PARAMETER_HAS_SEPARATOR = strpos($parameter_value, QUERY_PARAMETER_SEPARATOR) !== FALSE;
+                $and = $where === "" ? "" : " AND ";
+                switch ($parameter) {
+                    case QUERY_PARAMETER_INTERVAL:
+                        //https://dev.mysql.com/doc/refman/5.7/en/date-and-time-functions.html#function_date-add
+                        $interval_unit = strtoupper($urlVars[QUERY_PARAMETER_INTERVALUNIT]);
+                        if (!in_array($interval_unit, QUERY_ALLOWED_INTERVALUNITS)) {
+                            $interval_unit = 'HOUR';
+                        }
+                        $where .= $and . ITPINGS_CREATED_TIMESTAMP . " > DATE_SUB(NOW(), INTERVAL " . (int)$parameter_value . " " . $interval_unit . ")";
+                        break;
+                    case QUERY_PARAMETER_INTERVALUNIT:// processed in previous interval case
+                        break;
+                    case QUERY_PARAMETER_ORDERBY:
+                        if ($PARAMETER_HAS_SEPARATOR) {
+                            $orderbyfields = [];
+                            //accept only valid fieldnames
+                            foreach (explode(QUERY_PARAMETER_SEPARATOR, $parameter_value) as $fieldname) {
+                                if (in_array($fieldname, VALID_QUERY_PARAMETERS)) $orderbyfields[] .= $fieldname;
                             }
-                            $where .= $and . ITPINGS_CREATED_TIMESTAMP . " > DATE_SUB(NOW(), INTERVAL " . (int)$parameter_value . " " . $interval_unit . ")";
-                            break;
-                        case QUERY_PARAMETER_INTERVALUNIT:// processed in previous interval case
-                            break;
-                        case QUERY_PARAMETER_ORDERBY:
-                            if ($PARAMETER_HAS_SEPARATOR) {
-                                $orderbyfields = [];
-                                //accept only valid fieldnames
-                                foreach (explode(QUERY_PARAMETER_SEPARATOR, $parameter_value) as $fieldname) {
-                                    if (in_array($fieldname, VALID_QUERY_PARAMETERS)) $orderbyfields[] .= $fieldname;
-                                }
-                                $parameter_value = implode(QUERY_PARAMETER_SEPARATOR, $orderbyfields);
-                            }
-                            $order_sort = $urlVars[QUERY_PARAMETER_ORDERSORT] === "DESC" ? "DESC" : "ASC";
-                            $order .= " ORDER BY " . $parameter_value . " " . $order_sort;
-                            break;
-                        case QUERY_PARAMETER_LIMIT:
-                            $limit = " LIMIT " . Valued($parameter_value);
-                            break;
-                        default:
-                            if ($PARAMETER_HAS_SEPARATOR) {
-                                $where .= $and . "$parameter IN (" . $parameter_value . ")";//todo allow for strings
-                            } else {
-                                $parameter_value = (is_numeric($parameter_value) ? Valued($parameter_value) : Quoted($parameter_value));
-                                $where .= $and . "$parameter=" . $parameter_value;
-                            }
-                            break;
-                    }
+                            $parameter_value = implode(QUERY_PARAMETER_SEPARATOR, $orderbyfields);
+                        }
+                        $order_sort = $urlVars[QUERY_PARAMETER_ORDERSORT] === "DESC" ? "DESC" : "ASC";
+                        $order .= " ORDER BY " . $parameter_value . " " . $order_sort;
+                        break;
+                    case QUERY_PARAMETER_LIMIT:
+                        $limit = " LIMIT " . Valued($parameter_value);
+                        break;
+                    default:
+                        if ($PARAMETER_HAS_SEPARATOR) {
+                            $where .= $and . "$parameter IN (" . $parameter_value . ")";//todo allow for strings
+                        } else {
+                            $parameter_value = (is_numeric($parameter_value) ? Valued($parameter_value) : Quoted($parameter_value));
+                            $where .= $and . "$parameter=" . $parameter_value;
+                        }
+                        break;
                 }
             }
-            $sql = "SELECT * FROM $table_name";
-            if ($where !== "") $sql .= " WHERE " . $where;
-            $sql .= $order . ($limit === "" ? " LIMIT 1000" : $limit); //default LIMIT
         }
+        $sql = "SELECT * FROM $table_name";
+        if ($where !== "") $sql .= " WHERE " . $where;
+        $sql .= $order . ($limit === "" ? " LIMIT 1000" : $limit); //default LIMIT
     }
     SQL_Query($sql, TRUE);
 }
@@ -533,11 +501,16 @@ if (IS_POST) {
     //global $request object processed by all above functions
     $request = json_decode($POST_body, TRUE); // TRUE return as Associative Array
 
-    process_POSTrequest_Insert_Ping();      // create new _pingid in database asap
+    /**
+     * Create a Ping entry as early as possible
+     * The _pingid can then be used in all other Tables (primarly ttn__events)
+     */
+    $request[PRIMARYKEY_Ping] = SQL_Query(SQL_INSERT_INTO . TABLE_PINGS . " VALUES();");
+
     process_AllGateways();                  // get key_id or insert into 'pinged_gateways' and 'gateways' tables
     process_ApplicationDevice_Information();// get key_id or insert into 'applications, Devices, ApplicationDevices' tables
     process_Sensors_From_PayloadFields();   // get key_id or insert into 'sensors' and 'sensorvalues' tables
-    process_POSTrequest_Update_Ping();      // update request info in 'pings'
+    process_POSTrequest_Update_Ping();      // update request info in main 'pings' Table
 
     echo "ITpings recorded a ping: " . $request[PRIMARYKEY_Ping];
 

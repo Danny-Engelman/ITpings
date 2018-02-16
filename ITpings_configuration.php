@@ -244,7 +244,6 @@ define('ITpings_PrimaryKey_In_Table', 'ITpings PrimaryKey in ');
 $urlVars = array();
 parse_str($_SERVER['QUERY_STRING'], $urlVars);
 define('ADMIN_ACTION', $urlVars['action']);
-define('API_QUERY', $urlVars['query']);
 
 
 //region Database usage
@@ -359,10 +358,12 @@ define('VIEWNAME_EVENTS', VIEWPREFIX . 'Events');
 define('VIEWNAME_APPLICATIONDEVICES', VIEWPREFIX . 'ApplicationDevices');
 define('VIEWNAME_SENSORVALUES', VIEWPREFIX . 'SensorValues');
 define('VIEWNAME_PINGEDGATEWAYS', VIEWPREFIX . 'PingedGateways');
-define('VIEWNAMES', [
+define('ITPINGS_VIEWNAMES', [
     VIEWNAME_EVENTS
     , VIEWNAME_APPLICATIONDEVICES
     , VIEWNAME_SENSORVALUES
     , VIEWNAME_PINGEDGATEWAYS]);
 
 define('VIEWS_WITH_EXPANDED_KEYS', TRUE); // expand Foreign Keys, JSON will include more information
+
+define('ITPINGS_TABLES_VIEWS', array(ITPINGS_TABLES, ITPINGS_VIEWNAMES));

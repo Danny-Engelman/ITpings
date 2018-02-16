@@ -388,7 +388,7 @@ function SQL_create_or_replace_VIEW($viewname)
 
 function create_ITpings_Views_in_Database()
 {
-    foreach (VIEWNAMES as $viewname) {
+    foreach (ITPINGS_VIEWNAMES as $viewname) {
         SQL_create_or_replace_VIEW($viewname);
     }
 }
@@ -408,8 +408,12 @@ switch (ADMIN_ACTION) {
         break;
     case 'droptables':
         foreach (ITPINGS_TABLES as $index => $table) {
-            add_QueryLog("<h2>Drop Table: <b>$table</b></h2>");
+            add_QueryLog("<h2>Drop TABLE: <b>$table</b></h2>");
             SQL_Query("DROP TABLE IF EXISTS $table;");
+        }
+        foreach (ITPINGS_VIEWNAMES as $index => $view) {
+            add_QueryLog("<h2>Drop VIEW: <b>$view</b></h2>");
+            SQL_Query("DROP VIEW IF EXISTS $view;");
         }
         break;
     default:

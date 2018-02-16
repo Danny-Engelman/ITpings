@@ -16,20 +16,38 @@ This stores your data in **one** Database Table, ITpings uses a more advanced Da
 
 ## Use ITpings HTTP Integration and Dashboard in (under) 5 minutes
 
+Reading this README (before diving head in first) will give you more insight in technical/technology choices.
+
+If you still want to get started now,  
+please do: 
+
+
 1. Create a 'ITpings' Database in your MySQL server
 2. Edit the file ``ITpings_access_database.php``
-    1. Your MySQL Account & Password
-    2. Your Private Key (so others can not use your HTTP Integration)
+    1. update MySQL Account & Password
+    2. update your Private Key (so others can not abuse your HTTP Integration)
 3. Upload all ``ITpings_*.*`` files to your WebServer
 4. Create a HTTP Integration in the The Things Network Application console  
-pointing to the ``YOURWEBSERVER/ITpings_connector.php?key=YOURKEY``
+pointing to the ``YOURWEBSERVER/ITpings_connector.php?key=YOURKEY``    
+  **Yes! That is it!**  
+ITpings will create the Database Schema once it receives a first Ping
+
+5. Now open ``ITpings_dashboard.html``
 
 ## Why ITpings was created
 
 I received my The Things Network (TTN) Gateway and 2 handfull of TTN Nodes late december 2017;  
 and spent the Holidays playing with all Software related technologies.  
 
-I have been a script kiddie since learning BASIC in the late 70s, hardware just is not my _**thing**_   
+I have been a script kiddie since learning BASIC in the late 70s, hardware just is not my _**thing**_
+
+myDevices, Amazon Web Services, IBM's Node-Red and several more are by themselves great technologies to get started.
+
+But did not meet my growing list of requirements:
+
+* Track **all** my Nodes (=Sensors) in one View
+* 
+   
 
 ## (My)SQL Database schema
 

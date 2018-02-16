@@ -22,23 +22,34 @@ include('ITpings_configuration.php');
 function create_ITpings_Tables_in_Database()
 {
 
+    /**
+     * @param $table
+     * @param $idfield - can be False to indicate this table has NO primary key
+     * @param $fields - array of ['fieldname','fieldtype','fieldcomment']
+     * @param $foreignkeys - array of ['foreignkeyname','declaration']
+     */
     function create_Table($table, $idfield, $fields, $foreignkeys)
     {
+
         add_QueryLog("<h2>Create Table: <b>$table</b></h2>");
 
         $sql = "CREATE TABLE IF NOT EXISTS $table (";
         if ($idfield) {
-            $sql .= "$idfield INT(10) UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT COMMENT 'ITpings Primary Key',";
+            $sql .= "$idfield INT(10) UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT COMMENT 'ITpings Primary Key' , ";
         }
-        foreach ($fields as $field) {
-            $sql .= "$field[0] $field[1] COMMENT '$field[2]',";
+        foreach ($fields as $index => $field) {
+            if ($index > 0) $sql .= " , ";
+            $sql .= " $field[0] $field[1] COMMENT '$field[2]'";
         }
         if (USE_REFERENTIAL_INTEGRITY) {
-            foreach ($foreignkeys as $key) {
-                $sql .= " FOREIGN KEY ($key[0]) $key[1],";
+            foreach ($foreignkeys as $index => $key) {
+                //if ($index >= 0) $sql .= " , ";
+                $sql .= " , FOREIGN KEY ($key[0]) $key[1]";
             }
         }
-        $sql .= " PRIMARY KEY ($idfield)";
+        if ($idfield) {
+            $sql .= " , PRIMARY KEY ($idfield)";
+        }
         $sql .= ")";
         $sql .= " ENGINE=InnoDB DEFAULT CHARSET=utf8";
         $sql .= ";";
@@ -50,7 +61,8 @@ function create_ITpings_Tables_in_Database()
         return "(" . $str . ")";
     }
 
-    create_Table(TABLE_POSTREQUESTS, PRIMARYKEY_POSTrequests
+    create_Table(TABLE_POSTREQUESTS
+        , PRIMARYKEY_POSTrequests
         , [//Fields
             [ITPINGS_POST_body
                 , TYPE_POST_BODY
@@ -59,7 +71,8 @@ function create_ITpings_Tables_in_Database()
         , NO_FOREIGNKEYS
     );
 
-    create_Table(TABLE_APPLICATIONS, PRIMARYKEY_Application
+    create_Table(TABLE_APPLICATIONS
+        , PRIMARYKEY_Application
         , [//Fields
             [TTN_app_id
                 , TYPE_TTN_APP_ID
@@ -71,7 +84,8 @@ function create_ITpings_Tables_in_Database()
         , NO_FOREIGNKEYS
     );
 
-    create_Table(TABLE_DEVICES, PRIMARYKEY_Device
+    create_Table(TABLE_DEVICES
+        , PRIMARYKEY_Device
         , [//Fields
             [TTN_dev_id
                 , TYPE_TTN_DEVICE_ID
@@ -82,7 +96,8 @@ function create_ITpings_Tables_in_Database()
         ], NO_FOREIGNKEYS
     );
 
-    create_Table(TABLE_APPLICATIONDEVICES, PRIMARYKEY_ApplicationDevice
+    create_Table(TABLE_APPLICATIONDEVICES
+        , PRIMARYKEY_ApplicationDevice
         , [//Fields
             [PRIMARYKEY_Application
                 , TYPE_FOREIGNKEY
@@ -100,7 +115,8 @@ function create_ITpings_Tables_in_Database()
         ]
     );
 
-    create_Table(TABLE_GATEWAYS, PRIMARYKEY_Gateway
+    create_Table(TABLE_GATEWAYS
+        , PRIMARYKEY_Gateway
         , [//Fields
             [TTN_gtw_id
                 , TYPE_TTN_GTW_ID
@@ -133,7 +149,8 @@ function create_ITpings_Tables_in_Database()
 //        , NO_FOREIGNKEYS
 //    );
 
-    create_Table(TABLE_PINGS, PRIMARYKEY_Ping
+    create_Table(TABLE_PINGS
+        , PRIMARYKEY_Ping
         , [//Fields
             [ITPINGS_CREATED_TIMESTAMP
                 , " TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP "
@@ -191,8 +208,8 @@ function create_ITpings_Tables_in_Database()
         ]
     );
 
-    create_Table(TABLE_PINGEDGATEWAYS, PRIMARYKEY_PingedGateway
-
+    create_Table(TABLE_PINGEDGATEWAYS
+        , NO_PRIMARYKEY
         , [//Fields
             [PRIMARYKEY_Ping
                 , TYPE_FOREIGNKEY
@@ -229,8 +246,8 @@ function create_ITpings_Tables_in_Database()
     );
 
 
-    create_Table(TABLE_SENSORS, PRIMARYKEY_Sensor
-
+    create_Table(TABLE_SENSORS
+        , PRIMARYKEY_Sensor
         , [//Fields
             [PRIMARYKEY_ApplicationDevice
                 , TYPE_FOREIGNKEY
@@ -245,8 +262,8 @@ function create_ITpings_Tables_in_Database()
         ]
     );
 
-    create_Table(TABLE_SENSORVALUES, PRIMARYKEY_SensorValue
-
+    create_Table(TABLE_SENSORVALUES
+        , NO_PRIMARYKEY
         , [//Fields
             [PRIMARYKEY_Ping
                 , TYPE_FOREIGNKEY
@@ -269,7 +286,8 @@ function create_ITpings_Tables_in_Database()
     //convert array to quoted string
     define('TYPE_EVENTTYPE', sprintf("ENUM('%s')", implode("','", ENUM_EVENTTYPES)));
 
-    create_Table(TABLE_EVENTS, PRIMARYKEY_Events
+    create_Table(TABLE_EVENTS
+        , NO_PRIMARYKEY
         , [//Fields
             [PRIMARYKEY_Ping
                 , TYPE_FOREIGNKEY
@@ -304,7 +322,6 @@ function SQL_create_or_replace_VIEW($viewname)
     $devid = PRIMARYKEY_Device;
     $gtwid = PRIMARYKEY_Gateway;
     $created = ITPINGS_CREATED_TIMESTAMP;
-    $eventid = PRIMARYKEY_Events;
     $eventtype = ITPINGS_EVENTTYPE;
     $eventlabel = ITPINGS_EVENTLABEL;
     $eventvalue = ITPINGS_EVENTVALUE;
@@ -323,7 +340,7 @@ function SQL_create_or_replace_VIEW($viewname)
     switch ($viewname) {
         case VIEWNAME_EVENTS:
             $view .= " P.$pingid , P.$created";
-            $view .= " , E.$eventid , E.$eventtype , E.$eventlabel , E.$eventvalue";
+            $view .= " , E.$eventtype , E.$eventlabel , E.$eventvalue";
             $view .= " FROM " . TABLE_EVENTS . " E ";
             $view .= " JOIN " . TABLE_PINGS . " P ON P.$pingid = E.$pingid";
             $view .= " ORDER BY " . ITPINGS_CREATED_TIMESTAMP . " DESC";

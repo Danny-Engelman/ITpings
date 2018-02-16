@@ -122,8 +122,8 @@
                 if (attr === __ATTR_data_query) {
                     let uri = location.href.split('/');
                     uri.pop();
-                    uri.push('ITpings_connector.php?query=');
-                    uri = uri.join('/') + newValue;
+                    uri.push('ITpings_connector.php?query='+newValue);
+                    uri = uri.join('/');
                     fetch(uri)
                         .then(response => response.json())
                         .then(json => {

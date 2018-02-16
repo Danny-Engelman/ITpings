@@ -1,19 +1,25 @@
 <?php
 include('ITpings_access_configuration.php');
 
-define('TTN_DOWNLINKROOT', 'https://integrations.thethingsnetwork.org/');   // used to store shorter URI in database
+//region ===== APPLICATION CONFIGURATION ==========================================================
+
+// shorten the downlink URI going into the database, strip this first string from entry
+define('TTN_DOWNLINKROOT', 'https://integrations.thethingsnetwork.org/ttn-eu/api/v2/down/');
 
 // GPS has inaccurate fixes, to prevent 'moving' Gateway recordings a tolerance for lat/lon is calculated
 // Gateways outside this tolerance will be recorded as new (moved) Gateway
 define('GATEWAY_POSITION_TOLERANCE', '0.015');      // 15 meters
 
+// set to FALSE in Production, used for debugging purposes only
+define('SAVE_BARE_POST_REQUESTS', TRUE);
 
-define('USE_REFERENTIAL_INTEGRITY', TRUE);  // FALSE will not enforce Foreign Keys
+//endregion == APPLICATION CONFIGURATION ==========================================================
 
+
+define('USE_REFERENTIAL_INTEGRITY', TRUE);  // FALSE will NOT create Indexes and enforce Foreign Keys
 
 /**
  * Database Table names
- *
  * **/
 define('TABLE_PREFIX', 'ttn__');    // optional double underscore groups table list as 'ttn' in PHPMyAdmin
 
@@ -42,20 +48,15 @@ define('ITPINGS_TABLES', array(
 , TABLE_POSTREQUESTS
 ));
 
-
 //ITpings Table field keys, beware they don't collide with the TTN JSON fieldname definitions below
 define('PRIMARYKEY_PREFIX', '_');
-define('PRIMARYKEY_Events', PRIMARYKEY_PREFIX . 'eventid');
 define('PRIMARYKEY_POSTrequests', PRIMARYKEY_PREFIX . 'postid');
 define('PRIMARYKEY_Application', PRIMARYKEY_PREFIX . 'appid');
 define('PRIMARYKEY_Device', PRIMARYKEY_PREFIX . 'devid');
 define('PRIMARYKEY_ApplicationDevice', PRIMARYKEY_PREFIX . 'appdevid');
 define('PRIMARYKEY_Gateway', PRIMARYKEY_PREFIX . 'gtwid');
 define('PRIMARYKEY_Ping', PRIMARYKEY_PREFIX . 'pingid');
-define('PRIMARYKEY_PingedGateway', PRIMARYKEY_PREFIX . 'pingedgtwid');
 define('PRIMARYKEY_Sensor', PRIMARYKEY_PREFIX . 'sensorid');
-define('PRIMARYKEY_SensorValue', PRIMARYKEY_PREFIX . 'sensorvalueid');
-
 
 //region ===== (TTN) THE THINGS NETWORK JSON FIELDNAMES ===========================================
 
@@ -210,7 +211,6 @@ define('VALID_QUERY_PARAMETERS', [
     ITPINGS_SENSORVALUE,
     PRIMARYKEY_Ping,
     ITPINGS_CREATED_TIMESTAMP,
-    PRIMARYKEY_PingedGateway,
     PRIMARYKEY_Gateway,
     ITPINGS_EVENTTYPE,
     ITPINGS_EVENTLABEL,
@@ -226,9 +226,11 @@ define('VALID_QUERY_PARAMETERS', [
 //CONSTANTS, no need to change, results in better readable PHP $sql building code
 define('TYPE_FOREIGNKEY', 'INT UNSIGNED');
 define('SQL_INSERT_INTO', "INSERT INTO" . " ");
-define('SQL_VALUES_START', " VALUES ( NULL");  // one null is _id (autonumber)
+define('SQL_VALUES_START', " VALUES ( ");  // one null is _id (autonumber)
 define('SQL_VALUES_CLOSE', ");");
-define('NO_FOREIGNKEYS', FALSE);
+define('AUTOINCREMENT_TABLE_PRIMARYKEY', 'NULL');
+define('NO_FOREIGNKEYS', FALSE);    // always False to incicate  Table does not have Foreign Keys
+define('NO_PRIMARYKEY', FALSE); // always False to indicate a Table does not have a primary key
 define('IS_A_FOREIGNKEY_IN', "REFERENCES ");
 define('COMMA', ',');
 define('EMPTYSTRING', '');
@@ -247,7 +249,7 @@ define('API_QUERY', $urlVars['query']);
 
 //region Database usage
 
-$conn = mysqli_connect(DBHOST, DBUSER, DBPASSWORD, DBNAME);
+$conn = mysqli_connect(DBHOST, DBUSERNAME, DBPASSWORD, DBNAME);
 
 if (mysqli_connect_errno()) {
     die("Failed to connect to MySQL: " . mysqli_connect_error());
@@ -313,7 +315,7 @@ if (!IS_POST) {
  * brutal approach on SQL injection attempts
  * Return first element after split on 'illegal' SQL characters
  */
-function SQL_Injection_Save_OneWordString($str)
+function SQL_InjectionSave_OneWordString($str)
 {
     return preg_split("/[&=:;]/", $str)[0];
 }
@@ -352,10 +354,11 @@ function Boolean($val)
 }
 
 //names match with create_VIEW_[name] functiondefinitions
-define('VIEWNAME_EVENTS', 'Events');
-define('VIEWNAME_APPLICATIONDEVICES', 'ApplicationDevices');
-define('VIEWNAME_SENSORVALUES', 'SensorValues');
-define('VIEWNAME_PINGEDGATEWAYS', 'PingedGateways');
+define('VIEWPREFIX', TABLE_PREFIX);
+define('VIEWNAME_EVENTS', VIEWPREFIX . 'Events');
+define('VIEWNAME_APPLICATIONDEVICES', VIEWPREFIX . 'ApplicationDevices');
+define('VIEWNAME_SENSORVALUES', VIEWPREFIX . 'SensorValues');
+define('VIEWNAME_PINGEDGATEWAYS', VIEWPREFIX . 'PingedGateways');
 define('VIEWNAMES', [
     VIEWNAME_EVENTS
     , VIEWNAME_APPLICATIONDEVICES

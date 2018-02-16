@@ -76,7 +76,8 @@ function process_Application()
         $key_id = SQL_insert(
             TABLE_APPLICATIONS
             , [//values
-            Quoted($request_TTN_app_id)
+            AUTOINCREMENT_TABLE_PRIMARYKEY
+            , Quoted($request_TTN_app_id)
             , Quoted('Get description from TTN')
         ]);
     }
@@ -108,7 +109,8 @@ function process_Device()
         $key_id = SQL_insert(
             TABLE_DEVICES
             , [//values
-            Quoted($request_TTN_dev_id)
+            AUTOINCREMENT_TABLE_PRIMARYKEY
+            , Quoted($request_TTN_dev_id)
             , Quoted($request[TTN_hardware_serial])
         ]);
     }
@@ -143,7 +145,8 @@ function process_ApplicationDevice_Information()
         $key_id = SQL_insert(
             TABLE_APPLICATIONDEVICES
             , [//values
-            Valued($request[PRIMARYKEY_Application])
+            AUTOINCREMENT_TABLE_PRIMARYKEY
+            , Valued($request[PRIMARYKEY_Application])
             , Valued($request[PRIMARYKEY_Device])
         ]);
     }
@@ -223,7 +226,8 @@ function process_SingleGateway($gateway)
         $key_id = SQL_insert(
             TABLE_GATEWAYS
             , [//values
-            Quoted($request_TTN_gtw_id)
+            AUTOINCREMENT_TABLE_PRIMARYKEY
+            , Quoted($request_TTN_gtw_id)
             , Quoted($gateway[TTN_gtw_trusted])
             , Valued($latitude)
             , Valued($longitude)
@@ -286,7 +290,8 @@ function process_POSTrequest_Insert_Ping()
 
     $sql = SQL_INSERT_INTO . TABLE_PINGS;
     $sql .= " (" . PRIMARYKEY_Ping . ") ";
-    $sql .= SQL_VALUES_START; // CONSTANT already contains NULL value, forcing autoIncrement on ID field
+    $sql .= SQL_VALUES_START;
+    $sql .= "NULL"; //  AutoIncrement Primary Key in this Table
     $sql .= SQL_VALUES_CLOSE;
 
     $request[PRIMARYKEY_Ping] = SQL_Query($sql);
@@ -351,7 +356,8 @@ function process_OneSensor($sensor_name)
         $key_id = SQL_insert(
             TABLE_SENSORS
             , [//values
-            Valued($app_dev_id)
+            AUTOINCREMENT_TABLE_PRIMARYKEY
+            , Valued($app_dev_id)
             , Quoted($sensor_name)
         ]);
     }
@@ -420,11 +426,11 @@ $queries = array(
     "gateways"
     => "SELECT * FROM " . TABLE_GATEWAYS . " ORDER BY " . PRIMARYKEY_Gateway . " DESC LIMIT 10;",
     "pingedgateways"
-    => "SELECT * FROM " . TABLE_PINGEDGATEWAYS . " ORDER BY " . PRIMARYKEY_PingedGateway . " DESC LIMIT 10;",
+    => "SELECT * FROM " . TABLE_PINGEDGATEWAYS . " ORDER BY " . PRIMARYKEY_Ping . " DESC LIMIT 10;",
     "sensors"
     => "SELECT * FROM " . TABLE_SENSORS . " ORDER BY " . PRIMARYKEY_Sensor . " DESC LIMIT 10;",
     "sensorvalues"
-    => "SELECT * FROM " . TABLE_SENSORVALUES . " ORDER BY " . PRIMARYKEY_SensorValue . " DESC LIMIT 30;",
+    => "SELECT * FROM " . TABLE_SENSORVALUES . " ORDER BY " . PRIMARYKEY_Ping . " DESC LIMIT 30;",
     "pings"
     => "SELECT * FROM " . TABLE_PINGS . " ORDER BY " . PRIMARYKEY_Ping . " DESC LIMIT 10;",
     "application_devices"
@@ -465,7 +471,7 @@ function process_Query_with_QueryString_Parameters()
             $order = "";
             $limit = "";
             foreach (VALID_QUERY_PARAMETERS as $parameter) {
-                $parameter_value = SQL_Injection_Save_OneWordString($urlVars[$parameter]);
+                $parameter_value = SQL_InjectionSave_OneWordString($urlVars[$parameter]);
                 if ($parameter_value) {
                     $PARAMETER_HAS_SEPARATOR = strpos($parameter_value, QUERY_PARAMETER_SEPARATOR) !== FALSE;
                     $and = $where === "" ? "" : " AND ";

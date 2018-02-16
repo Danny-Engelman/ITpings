@@ -4,6 +4,10 @@ Is the TTN HTTP Integration for storing your TTN Application data in a MySQL dat
 
 ITpings can be used by both beginner and advanced level PHP developers.
 
+* Creates the MySQL Database Tables for you
+* Is the HTTP Integration from The Things Network to your MySQL database
+* Is the Dashboard API for your Web Front-end 
+
 
 **Alternative technologies:**
 
@@ -31,17 +35,18 @@ I have been a script kiddie since learning BASIC in the late 70s, hardware just 
 
 It is not normalized to the Boyce-Codd Form
 
+![](https://i.imgur.com/dTlBzVQ.jpg)
+
 ### MySQL Database management alternatives
 
 **These tools can be helpfull but are NOT required; ITpings does all the work for you**
 
 PHPMyAdmin is the default tool for MySQL on the LAMP/WAMP stack.
 
-If you can access your MySQL server remotely  
-(*not a default option for most ISPs, you may have to ask your ISP to open the (default) 3306 port*)  
-[Oracle's MySQL WorkBench](https://www.mysql.com/products/workbench/) can be installed on your local machine. 
+If you can access your MySQL server remotely (*you may have to ask your ISP to open the (default) 3306 port*)  
+[Oracle's MySQL WorkBench](https://www.mysql.com/products/workbench/) (GPL license) or [Toad Edge](https://www.toadworld.com/products/toad-edge) ($$$) can be installed on your local machine. 
 
-[RESTer](https://github.com/geekypedia/RESTer) (or a fork) Not only adds a RESTfull API (remember: NOT required to use ITpings), but also provides a good enough Admin interface for managing your MySQL database.
+[RESTer](https://github.com/geekypedia/RESTer) (or a fork) (MIT license) Not only adds a RESTfull API (remember: is NOT required to use ITpings), but also provides a fast and good enough Admin interface for managing your MySQL database.
 
 ### Adding a REST interface (if you really want one)
 

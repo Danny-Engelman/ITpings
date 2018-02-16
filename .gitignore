@@ -1,6 +1,2 @@
-# Created by .ignore support plugin (hsz.mobi)
 .idea/
-test*
-ttn_*
-ITpings_access_configuration*.php
-view*
+*access*

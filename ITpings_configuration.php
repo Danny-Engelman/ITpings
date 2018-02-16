@@ -1,5 +1,5 @@
 <?php
-include('ITpings_access_configuration.php');
+include('ITpings_database_connect.php');
 
 //region ===== APPLICATION CONFIGURATION ==========================================================
 

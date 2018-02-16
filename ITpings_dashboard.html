@@ -58,10 +58,11 @@
             float: left;
             font-size: 10px;
         }
-        .chart_interval > div:hover{
-            cursor:pointer;
+
+        .chart_interval > div:hover {
+            cursor: pointer;
             background-color: green;
-            color:white;
+            color: white;
         }
     </style>
 </head>
@@ -122,20 +123,22 @@
                 if (attr === __ATTR_data_query) {
                     let uri = location.href.split('/');
                     uri.pop();
-                    uri.push('ITpings_connector.php?query='+newValue);
+                    uri.push('ITpings_connector.php?query=' + newValue);
                     uri = uri.join('/');
                     fetch(uri)
                         .then(response => response.json())
                         .then(json => {
-                                // Create HTML TABLE
+                                // Create HTML TABLE, for a challenge refactor this to one .reduceRight call
                                 let headers = [], maxid = 0;// maximum Primary Key value read in this DB response
                                 // process rows first because the headers info is needed in the THEAD
                                 let TBODY = json.map(function (row) {
                                     headers = Object.keys(row);
                                     let TRdata = '';// stuff all data values as data-attributes on the TR tag
-                                    let TR = headers.map(function (columnName, columnNr) {
+                                    let TR = headers.map(function (columnName) {
                                         let value = row[columnName];
-                                        if (columnNr === 0) maxid = value;
+                                        if (columnName.indexOf('_') === 0) {// its a database primary _key
+                                            if (value > maxid) maxid = value;
+                                        }
                                         let data = ' data-' + columnName + '="' + value + '"';
                                         TRdata += data;
                                         return '<TD data-column="' + columnName + '" ' + data + '>' + value + '</TD>';
@@ -147,6 +150,14 @@
                                     + headers.map(function (columnName) {
                                         return '<TH data-column="' + columnName + '">' + columnName + '</TH>';
                                     }).join('') + '</TR></THEAD>' + TBODY + '</TABLE>';
+
+                                setTimeout(function () {
+                                    window.me = this;
+                                    var TABLE = this.firstChild;
+                                    let maxid = TABLE.getAttribute('data-maxid');
+                                    let uri = TABLE.getAttribute('data-query');
+                                    console.log(maxid, uri, this);
+                                }.bind(this), 100);
                             }
                         );
                 }

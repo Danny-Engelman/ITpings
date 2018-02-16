@@ -18,32 +18,32 @@ include('ITpings_configuration.php');
                                         events
 */
 
-function create_Table($table, $idfield, $fields, $foreignkeys)
-{
-    add_QueryLog("<h2>Create Table: <b>$table</b></h2>");
-
-    $sql = "CREATE TABLE IF NOT EXISTS $table (";
-    if ($idfield) {
-        $sql .= "$idfield INT(10) UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT COMMENT 'ITpings Primary Key',";
-    }
-    foreach ($fields as $field) {
-        $sql .= "$field[0] $field[1] COMMENT '$field[2]',";
-    }
-    if (USE_REFERENTIAL_INTEGRITY) {
-        foreach ($foreignkeys as $key) {
-            $sql .= "	FOREIGN KEY ($key[0]) $key[1],";
-        }
-    }
-    $sql .= "PRIMARY KEY ($idfield)";
-    $sql .= ")";
-    $sql .= " ENGINE=InnoDB DEFAULT CHARSET=utf8";
-    $sql .= ";";
-    SQL_Query($sql);
-}
-
 //region====================================================================================   create all Tables
 function create_ITpings_Tables_in_Database()
 {
+
+    function create_Table($table, $idfield, $fields, $foreignkeys)
+    {
+        add_QueryLog("<h2>Create Table: <b>$table</b></h2>");
+
+        $sql = "CREATE TABLE IF NOT EXISTS $table (";
+        if ($idfield) {
+            $sql .= "$idfield INT(10) UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT COMMENT 'ITpings Primary Key',";
+        }
+        foreach ($fields as $field) {
+            $sql .= "$field[0] $field[1] COMMENT '$field[2]',";
+        }
+        if (USE_REFERENTIAL_INTEGRITY) {
+            foreach ($foreignkeys as $key) {
+                $sql .= " FOREIGN KEY ($key[0]) $key[1],";
+            }
+        }
+        $sql .= " PRIMARY KEY ($idfield)";
+        $sql .= ")";
+        $sql .= " ENGINE=InnoDB DEFAULT CHARSET=utf8";
+        $sql .= ";";
+        SQL_Query($sql);
+    }
 
     function OnKey($str)
     {// Make Foreign Key definitions better readable
@@ -126,7 +126,9 @@ function create_ITpings_Tables_in_Database()
 
 //    create_Table(TABLE_FREQUENCIES, PRIMARYKEY_Frequency
 //        , [//Fields
-//            [TTN_frequency, TYPE_TTN_FREQUENCY, "TTN Frequency"]
+//            [TTN_frequency
+//                , TYPE_TTN_FREQUENCY
+//                , "TTN Frequency"]
 //        ]
 //        , NO_FOREIGNKEYS
 //    );
@@ -156,7 +158,7 @@ function create_ITpings_Tables_in_Database()
                 , TYPE_TTN_TIMESTRING
                 , "TTN time"]
 
-            //TODO create lookup tables to reduce the size of pings Table by 16 bytes for each entry
+            //future: create lookup tables to reduce the size of pings Table by 16 bytes for each entry
             , [ITPINGS_FREQUENCY
                 , TYPE_TTN_FREQUENCY
                 , "TTN frequency"]//5 bytes save 4
@@ -204,6 +206,7 @@ function create_ITpings_Tables_in_Database()
             , [TTN_time
                 , TYPE_TTN_TIMESTRING
                 , "TTN GatewayPing Time"]
+
             , [TTN_channel
                 , TYPE_TTN_CHANNEL
                 , "TTN GatewayPing Channel"]
@@ -297,6 +300,7 @@ function SQL_create_or_replace_VIEW($viewname)
     //declare variables for constants so they can be used inside PHP strings
     $pingid = PRIMARYKEY_Ping;
     $appid = PRIMARYKEY_Application;
+    $appdevid = PRIMARYKEY_ApplicationDevice;
     $devid = PRIMARYKEY_Device;
     $gtwid = PRIMARYKEY_Gateway;
     $created = ITPINGS_CREATED_TIMESTAMP;
@@ -319,33 +323,44 @@ function SQL_create_or_replace_VIEW($viewname)
     switch ($viewname) {
         case VIEWNAME_EVENTS:
             $view .= " P.$pingid , P.$created";
-            $view .= ",E.$eventid , E.$eventtype , E.$eventlabel , E.$eventvalue";
+            $view .= " , E.$eventid , E.$eventtype , E.$eventlabel , E.$eventvalue";
             $view .= " FROM " . TABLE_EVENTS . " E ";
             $view .= " JOIN " . TABLE_PINGS . " P ON P.$pingid = E.$pingid";
+            $view .= " ORDER BY " . ITPINGS_CREATED_TIMESTAMP . " DESC";
             break;
         case VIEWNAME_APPLICATIONDEVICES:
-            $view .= " AD.* ";
+            $view .= " AD.$appdevid ";
+            $view .= " , A." . TTN_app_id . " , A." . ITPINGS_DESCRIPTION;
+            $view .= " , D." . TTN_dev_id . " , D." . TTN_hardware_serial;
             $view .= " FROM " . TABLE_APPLICATIONDEVICES . " AD ";
             $view .= " JOIN " . TABLE_APPLICATIONS . " A ON A.$appid = AD.$appid";
             $view .= " JOIN " . TABLE_DEVICES . " D ON D.$devid = AD.$devid";
-            $view .= " ORDER BY " . PRIMARYKEY_ApplicationDevice;
+            $view .= " ORDER BY A." . TTN_app_id . " ASC, D." . TTN_dev_id . " ASC";
             break;
         case VIEWNAME_SENSORVALUES:
-            $view .= " P.$pingid,P.$created";
-            $view .= ",S.$sensorid , S.$sensorname , SV.$sensorvalue ";
+            $view .= " P.$pingid , P.$created";
+            $view .= " , S.$sensorid";
+            if (VIEWS_WITH_EXPANDED_KEYS) {
+                $view .= " , AD.$appdevid , AD." . TTN_app_id . " , AD." . TTN_dev_id . " , AD." . TTN_hardware_serial;
+                $view .= " , S.$sensorname";
+            }
+            $view .= " , SV.$sensorvalue ";
             $view .= " FROM " . TABLE_SENSORVALUES . " SV ";
             $view .= " JOIN " . TABLE_SENSORS . " S ON S.$sensorid = SV.$sensorid";
             $view .= " JOIN " . TABLE_PINGS . " P ON P.$pingid = SV.$pingid";
-            $view .= " ORDER BY " . ITPINGS_CREATED_TIMESTAMP . " ASC, SV.$sensorid";
+            if (VIEWS_WITH_EXPANDED_KEYS) {
+                $view .= " JOIN " . VIEWNAME_APPLICATIONDEVICES . " AD ON AD.$appdevid = S.$appdevid";
+            }
+            $view .= " ORDER BY " . ITPINGS_CREATED_TIMESTAMP . " DESC, SV.$sensorid";
             break;
         case VIEWNAME_PINGEDGATEWAYS:
             $view .= " P.$pingid,P.$created";
-            $view .= ",PG.$timestamp, PG.$time, PG.$channel, PG.$rssi, PG.$snr, PG.$rf_chain ";
-            $view .= ",G.* ";
+            $view .= " , PG.$timestamp , PG.$time , PG.$channel , PG.$rssi , PG.$snr , PG.$rf_chain ";
+            $view .= " , G.* ";
             $view .= " FROM " . TABLE_PINGEDGATEWAYS . " PG ";
-            $view .= " JOIN " . TABLE_GATEWAYS . " G ON G.$gtwid = PG.$gtwid";
             $view .= " JOIN " . TABLE_PINGS . " P ON P.$pingid = PG.$pingid";
-            $view .= " ORDER BY " . ITPINGS_CREATED_TIMESTAMP . " ASC";
+            $view .= " JOIN " . TABLE_GATEWAYS . " G ON G.$gtwid = PG.$gtwid";
+            $view .= " ORDER BY " . ITPINGS_CREATED_TIMESTAMP . " DESC";
             break;
     }
 
@@ -384,8 +399,9 @@ switch (ADMIN_ACTION) {
         echo "incorrect action" . $urlVars['action'];
 }
 
-//show Query Log
+//show all SQL stuff that happened from global $sqlLog
 foreach ($sqlLog as $key => $value) {
+    //insert_Event(ENUM_EVENTTYPE_Log,'query',$value);
     echo $value;
 }
 

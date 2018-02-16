@@ -40,14 +40,15 @@ function insert_TTN_Event($event_type, $event_label, $event_value = '')
 /**
  * @param $table_name
  * @param $where_clause
- * @param $order_by_field
+ * @param $key_field
  * @return array|null
  *
  * Find a matching row in the database, or NULL for non found
  */
-function SQL_find_existing_row($table_name, $where_clause, $order_by_field)
+function SQL_find_existing_key_id($key_field, $table_name, $where_clause)
 {
-    return SQL_Query("SELECT * FROM $table_name WHERE $where_clause ORDER BY $order_by_field DESC LIMIT 1;");
+    $sql = "SELECT $key_field FROM $table_name WHERE $where_clause ORDER BY $key_field DESC LIMIT 1;";
+    return SQL_Query($sql)[$key_field];
 }
 
 /**
@@ -59,24 +60,28 @@ function process_Application()
     global $request;
     $request_TTN_app_id = $request[TTN_app_id];
 
-    $table_row = SQL_find_existing_row(TABLE_APPLICATIONS
+    $key_id = SQL_find_existing_key_id(
+        PRIMARYKEY_Application
+        , TABLE_APPLICATIONS
         , TTN_app_id . "=" . Quoted($request_TTN_app_id)
-        , PRIMARYKEY_Application
+
     );
 
-    if ($table_row) {
-        $id = $table_row[PRIMARYKEY_Application];
-    } else {
-        insert_TTN_Event(ENUM_EVENTTYPE_NewApp, $request_TTN_app_id);
+    if (!$key_id) {
+        insert_TTN_Event(
+            ENUM_EVENTTYPE_NewApp
+            , $request_TTN_app_id
+        );
 
-        $id = SQL_insert(TABLE_APPLICATIONS
+        $key_id = SQL_insert(
+            TABLE_APPLICATIONS
             , [//values
-                Quoted($request_TTN_app_id)
-                , Quoted('Get description from TTN')
-            ]);
+            Quoted($request_TTN_app_id)
+            , Quoted('Get description from TTN')
+        ]);
     }
 
-    $request[PRIMARYKEY_Application] = $id;
+    $request[PRIMARYKEY_Application] = $key_id;
 }
 
 /**
@@ -88,23 +93,26 @@ function process_Device()
     global $request;
     $request_TTN_dev_id = $request[TTN_dev_id];
 
-    $table_row = SQL_find_existing_row(TABLE_DEVICES
+    $key_id = SQL_find_existing_key_id(
+        PRIMARYKEY_Device
+        , TABLE_DEVICES
         , TTN_dev_id . "=" . Quoted($request_TTN_dev_id)
-        , PRIMARYKEY_Device
     );
 
-    if ($table_row) {
-        $id = $table_row[PRIMARYKEY_Device];
-    } else {
-        insert_TTN_Event(ENUM_EVENTTYPE_NewDevice, $request_TTN_dev_id);
+    if (!$key_id) {
+        insert_TTN_Event(
+            ENUM_EVENTTYPE_NewDevice
+            , $request_TTN_dev_id
+        );
 
-        $id = SQL_insert(TABLE_DEVICES
+        $key_id = SQL_insert(
+            TABLE_DEVICES
             , [//values
-                Quoted($request_TTN_dev_id)
-                , Quoted($request[TTN_hardware_serial])
-            ]);
+            Quoted($request_TTN_dev_id)
+            , Quoted($request[TTN_hardware_serial])
+        ]);
     }
-    $request[PRIMARYKEY_Device] = $id;
+    $request[PRIMARYKEY_Device] = $key_id;
 }
 
 /**
@@ -124,49 +132,54 @@ function process_ApplicationDevice_Information()
     process_Application();    // Find known Application, else save new App
     process_Device(); // Find known Device, else save as new Device
 
-    $table_row = SQL_find_existing_row(TABLE_APPLICATIONDEVICES
+    $key_id = SQL_find_existing_key_id(
+        PRIMARYKEY_ApplicationDevice
+        , TABLE_APPLICATIONDEVICES
         , PRIMARYKEY_Application . "=" . $request[PRIMARYKEY_Application] . " AND " . PRIMARYKEY_Device . "=" . $request[PRIMARYKEY_Device]
-        , PRIMARYKEY_ApplicationDevice
     );
 
-    if ($table_row) {
-        $id = $table_row[PRIMARYKEY_ApplicationDevice];
-    } else {
+    if (!$key_id) {
         //not Logging NewAppDev to _events Table
-
-        $id = SQL_insert(TABLE_APPLICATIONDEVICES
+        $key_id = SQL_insert(
+            TABLE_APPLICATIONDEVICES
             , [//values
-                Valued($request[PRIMARYKEY_Application])
-                , Valued($request[PRIMARYKEY_Device])
-            ]);
+            Valued($request[PRIMARYKEY_Application])
+            , Valued($request[PRIMARYKEY_Device])
+        ]);
     }
 
-    $request[PRIMARYKEY_ApplicationDevice] = $id;
+    $request[PRIMARYKEY_ApplicationDevice] = $key_id;
 }
 
 /**
  * @param $gtwid
  * @param $latitude
  * @param $longitude
- * @param $distanceTolerance
  * @return array|null
  *
  * Find matching Gateway ID
  * OVER 15 metres distance, the Gateway is recorded again (as being moved)
  */
-function find_Nearest_Gateway_With_Same_ID($gtwid, $latitude, $longitude, $distanceTolerance)
+function find_Nearest_Gateway_With_Same_ID($gtwid, $latitude, $longitude)
 {
-    $GTWradLAT = deg2rad($latitude);
-    $GTWradLON = deg2rad($longitude);
-    $radius = 6371;// 6371 for Kilometers, 3959 for Miles
+    $sql = "SELECT * ";
 
-    $sql = "SELECT * , ";
-    $sql .= "($radius*acos(cos($GTWradLAT)*cos(radians(" . ITPINGS_LATITUDE . "))*cos(radians(" . ITPINGS_LONGITUDE . ")-$GTWradLON )+sin($GTWradLAT )*sin(radians(" . ITPINGS_LATITUDE . ")))) AS distance";
+    if ($latitude) {
+        $GTWradLAT = deg2rad($latitude);
+        $GTWradLON = deg2rad($longitude);
+        $radius = 6371;// 6371 for Kilometers, 3959 for Miles
+        $sql .= " , ($radius*acos(cos($GTWradLAT)*cos(radians(" . ITPINGS_LATITUDE . "))*cos(radians(" . ITPINGS_LONGITUDE . ")-$GTWradLON )+sin($GTWradLAT )*sin(radians(" . ITPINGS_LATITUDE . ")))) AS distance";
+    }
+
     $sql .= " FROM " . TABLE_GATEWAYS;
     $sql .= " WHERE " . TTN_gtw_id . "=" . Quoted($gtwid);
 
-    // GPS has inaccurate fixes, to prevent 'moving' Gateway recordings a tolerance for lat/lon is calculated
-    $sql .= " HAVING distance < $distanceTolerance ORDER BY distance;";
+    if ($latitude) {
+        // GPS has inaccurate fixes, to prevent 'moving' Gateway recordings a tolerance for lat/lon is calculated
+        $sql .= " HAVING distance < " . GATEWAY_POSITION_TOLERANCE . " ORDER BY distance;";
+    } else {
+        $sql .= " ORDER BY " . PRIMARYKEY_Gateway . " DESC;";
+    }
 
     return SQL_Query($sql);
 }
@@ -179,33 +192,47 @@ function find_Nearest_Gateway_With_Same_ID($gtwid, $latitude, $longitude, $dista
  */
 function process_SingleGateway($gateway)
 {
-    $request_gtw_id = $gateway[TTN_gtw_id];
+    $request_TTN_gtw_id = $gateway[TTN_gtw_id];
     $latitude = $gateway[TTN_latitude];
     $longitude = $gateway[TTN_longitude];
 
-    // GPS has inaccurate fixes, to prevent 'moving' Gateway recordings a tolerance for lat/lon is calculated
-    $table_row = find_Nearest_Gateway_With_Same_ID($request_gtw_id
+    // GPS has inaccurate fixes,
+    // to prevent 'moving' Gateway recordings a tolerance for lat/lon is calculated
+    $table_row = find_Nearest_Gateway_With_Same_ID(
+        $request_TTN_gtw_id
         , $latitude
         , $longitude
-        , GATEWAY_POSITION_TOLERANCE);
+    );
 
     if ($table_row) {
-        $id = $table_row[PRIMARYKEY_Gateway];
+        $key_id = $table_row[PRIMARYKEY_Gateway];
+        if (!$latitude) {
+            insert_TTN_Event(
+                ENUM_EVENTTYPE_Log
+                , "Gateway without Location"
+                , json_encode($gateway)
+            );
+        }
     } else {
-        insert_TTN_Event(ENUM_EVENTTYPE_NewGateway, $request_gtw_id);
+        insert_TTN_Event(
+            ENUM_EVENTTYPE_NewGateway
+            , $request_TTN_gtw_id
+            , json_encode($gateway)
+        );
 
-        $id = SQL_insert(TABLE_GATEWAYS
+        $key_id = SQL_insert(
+            TABLE_GATEWAYS
             , [//values
-                Quoted($request_gtw_id)
-                , Quoted($gateway[TTN_gtw_trusted])
-                , Valued($latitude)
-                , Valued($longitude)
-                , Valued($gateway[TTN_altitude])
-                , Quoted($gateway[TTN_location_source])
-            ]);
+            Quoted($request_TTN_gtw_id)
+            , Quoted($gateway[TTN_gtw_trusted])
+            , Valued($latitude)
+            , Valued($longitude)
+            , Valued($gateway[TTN_altitude])
+            , Quoted($gateway[TTN_location_source])
+        ]);
     }
 
-    return $id;
+    return $key_id;
 }
 
 /**
@@ -225,21 +252,26 @@ function process_AllGateways()
         $gatewayID = process_SingleGateway($gateway); // Find known Gateway, else save new Gateway
 
         if (in_array($gatewayID, $processedGateways_InRequest)) {
-            insert_TTN_Event(ENUM_EVENTTYPE_Error, "Duplicate TTN Gateway" . $gatewayID, json_encode($request_TTN_Gateways));
+            insert_TTN_Event(
+                ENUM_EVENTTYPE_Error
+                , "Duplicate TTN Gateway" . $gatewayID
+                , json_encode($request_TTN_Gateways)
+            );
         } else {
             array_push($processedGateways_InRequest, $gatewayID);
 
-            SQL_insert(TABLE_PINGEDGATEWAYS
+            SQL_insert(
+                TABLE_PINGEDGATEWAYS
                 , [//values
-                    Valued($request[PRIMARYKEY_Ping])
-                    , Valued($gatewayID)
-                    , Valued($gateway[TTN_timestamp])
-                    , Quoted($gateway[TTN_time])
-                    , Valued($gateway[TTN_channel])
-                    , Valued($gateway[TTN_rssi])
-                    , Valued($gateway[TTN_snr])
-                    , Valued($gateway[TTN_rf_chain])
-                ]);
+                Valued($request[PRIMARYKEY_Ping])
+                , Valued($gatewayID)
+                , Valued($gateway[TTN_timestamp])
+                , Quoted($gateway[TTN_time])
+                , Valued($gateway[TTN_channel])
+                , Valued($gateway[TTN_rssi])
+                , Valued($gateway[TTN_snr])
+                , Valued($gateway[TTN_rf_chain])
+            ]);
         }
     }
 }
@@ -294,7 +326,7 @@ function process_POSTrequest_Update_Ping()
 
 /**
  * @param $sensor_name
- * @return number ID value of existing/new Sensor
+ * @return array ID value of existing/new Sensor
  *
  * Find a Sensor or create a new Sensor
  */
@@ -304,23 +336,27 @@ function process_OneSensor($sensor_name)
 
     $app_dev_id = $request[PRIMARYKEY_ApplicationDevice];
 
-    $table_row = SQL_find_existing_row(TABLE_SENSORS
+    $key_id = SQL_find_existing_key_id(
+        PRIMARYKEY_Sensor
+        , TABLE_SENSORS
         , PRIMARYKEY_ApplicationDevice . "=$app_dev_id AND " . ITPINGS_SENSORNAME . "=" . Quoted($sensor_name)
-        , PRIMARYKEY_Sensor
     );
-    if ($table_row) {
-        $id = $table_row[PRIMARYKEY_Sensor];
-    } else {
-        insert_TTN_Event(ENUM_EVENTTYPE_NewSensor, $request[TTN_dev_id], $sensor_name);
+    if (!$key_id) {
+        insert_TTN_Event(
+            ENUM_EVENTTYPE_NewSensor
+            , $request[TTN_dev_id]
+            , $sensor_name
+        );
 
-        $id = SQL_insert(TABLE_SENSORS
+        $key_id = SQL_insert(
+            TABLE_SENSORS
             , [//values
-                Quoted($app_dev_id)
-                , Quoted($sensor_name)
-            ]);
+            Valued($app_dev_id)
+            , Quoted($sensor_name)
+        ]);
     }
 
-    return $id;
+    return $key_id;
 }
 
 
@@ -335,7 +371,10 @@ function check_Event_Trigger_For_Sensor($sensor_name, $sensor_value)
     $IS_BUTTONCLICKED = ($sensor_name === TTN_Cayenne_digital_in_1 && $sensor_value === 1);
 
     if ($IS_BUTTONCLICKED) {
-        insert_TTN_Event(ENUM_EVENTTYPE_Trigger, 'ButtonClicked', $request[TTN_dev_id]);
+        insert_TTN_Event(
+            ENUM_EVENTTYPE_Trigger
+            , 'ButtonClicked'
+            , $request[TTN_dev_id]);
     }
 }
 
@@ -357,12 +396,13 @@ function process_Sensors_From_PayloadFields()
 
         $sensor_ID = process_OneSensor($sensor_name);
 
-        SQL_insert(TABLE_SENSORVALUES
+        SQL_insert(
+            TABLE_SENSORVALUES
             , [//values
-                $request[PRIMARYKEY_Ping]
-                , Valued($sensor_ID)
-                , Quoted($sensor_value)
-            ]);
+            $request[PRIMARYKEY_Ping]
+            , Valued($sensor_ID)
+            , Quoted($sensor_value)
+        ]);
 
         check_Event_Trigger_For_Sensor($sensor_name, $sensor_value);
     }
@@ -391,82 +431,87 @@ $queries = array(
     => "SELECT * FROM " . TABLE_APPLICATIONDEVICES . " ORDER BY " . PRIMARYKEY_ApplicationDevice . " DESC LIMIT 10;",
 );
 
-function process_Query()
+function process_Query_with_QueryString_Parameters()
 {
+    global $queries;
     global $urlVars;
+    $sql = "";
     $table_name = false;
 
-    //user can only request for limitted table/view names
-    switch (API_QUERY) {
-        case TABLE_EVENTS:
-        case TABLE_POSTREQUESTS:
-        case TABLE_APPLICATIONS:
-        case TABLE_DEVICES:
-        case TABLE_APPLICATIONDEVICES:
-        case TABLE_GATEWAYS:
-        case TABLE_PINGS:
-        case TABLE_PINGEDGATEWAYS:
-        case TABLE_SENSORS:
-        case TABLE_SENSORVALUES:
-        case VIEWNAME_EVENTS:
-        case VIEWNAME_SENSORVALUES:
-        case VIEWNAME_PINGEDGATEWAYS:
-        case VIEWNAME_APPLICATIONDEVICES:
-            $table_name = API_QUERY;
-    }
-    if ($table_name) {
-        //built a safe SQL query
-        $where = "";
-        $order = "";
-        $limit = "";
-        foreach (VALID_QUERY_PARAMETERS as $parameter) {
-            $parameter_value = SQL_Injection_Save_OneWordString($urlVars[$parameter]);
-            if ($parameter_value) {
-                $HAS_SEPARATOR = strpos($parameter_value, QUERY_PARAMETER_SEPARATOR) !== FALSE;
-                $and = $where === "" ? "" : " AND ";
-                switch ($parameter) {
-                    case QUERY_PARAMETER_INTERVAL:
-                        //https://dev.mysql.com/doc/refman/5.7/en/date-and-time-functions.html#function_date-add
-                        $interval_unit = strtoupper($urlVars[QUERY_PARAMETER_INTERVALUNIT]);
-                        if (!in_array($interval_unit, QUERY_ALLOWED_INTERVALUNITS)) {
-                            $interval_unit = 'HOUR';
-                        }
-                        $where .= $and . ITPINGS_CREATED_TIMESTAMP . " > DATE_SUB(NOW(), INTERVAL " . (int)$parameter_value . " " . $interval_unit . ")";
-                        break;
-                    case QUERY_PARAMETER_INTERVALUNIT:
-                        break;
-                    case QUERY_PARAMETER_ORDERBY:
-                        if ($HAS_SEPARATOR) {
-                            $orderbyfields = [];
-                            //accept only valid fieldnames
-                            foreach (explode(QUERY_PARAMETER_SEPARATOR, $parameter_value) as $fieldname) {
-                                if (in_array($fieldname, VALID_QUERY_PARAMETERS)) $orderbyfields[] .= $fieldname;
+    if ($queries[API_QUERY]) {
+        $sql = $queries[API_QUERY];
+    } else {
+        //user can only request for limitted table/view names
+        switch (API_QUERY) {
+            case TABLE_EVENTS:
+            case TABLE_POSTREQUESTS:
+            case TABLE_APPLICATIONS:
+            case TABLE_DEVICES:
+            case TABLE_APPLICATIONDEVICES:
+            case TABLE_GATEWAYS:
+            case TABLE_PINGS:
+            case TABLE_PINGEDGATEWAYS:
+            case TABLE_SENSORS:
+            case TABLE_SENSORVALUES:
+            case VIEWNAME_EVENTS:
+            case VIEWNAME_SENSORVALUES:
+            case VIEWNAME_PINGEDGATEWAYS:
+            case VIEWNAME_APPLICATIONDEVICES:
+                $table_name = API_QUERY;
+        }
+        if ($table_name) {
+            //built a safe SQL query
+            $where = "";
+            $order = "";
+            $limit = "";
+            foreach (VALID_QUERY_PARAMETERS as $parameter) {
+                $parameter_value = SQL_Injection_Save_OneWordString($urlVars[$parameter]);
+                if ($parameter_value) {
+                    $PARAMETER_HAS_SEPARATOR = strpos($parameter_value, QUERY_PARAMETER_SEPARATOR) !== FALSE;
+                    $and = $where === "" ? "" : " AND ";
+                    switch ($parameter) {
+                        case QUERY_PARAMETER_INTERVAL:
+                            //https://dev.mysql.com/doc/refman/5.7/en/date-and-time-functions.html#function_date-add
+                            $interval_unit = strtoupper($urlVars[QUERY_PARAMETER_INTERVALUNIT]);
+                            if (!in_array($interval_unit, QUERY_ALLOWED_INTERVALUNITS)) {
+                                $interval_unit = 'HOUR';
                             }
-                            $parameter_value = implode(QUERY_PARAMETER_SEPARATOR, $orderbyfields);
-                        }
-                        $order_sort = $urlVars[QUERY_PARAMETER_ORDERSORT] === "DESC" ? "DESC" : "ASC";
-                        $order .= " ORDER BY " . $parameter_value . " " . $order_sort;
-                        break;
-                    case QUERY_PARAMETER_LIMIT:
-                        $limit = " LIMIT " . Valued($parameter_value);
-                        break;
-                    default:
-                        if ($HAS_SEPARATOR) {
-                            $where .= $and . "$parameter IN (" . $parameter_value . ")";//todo allow for strings
-                        } else {
-                            $parameter_value = (is_numeric($parameter_value) ? Valued($parameter_value) : Quoted($parameter_value));
-                            $where .= $and . "$parameter=" . $parameter_value;
-                        }
-                        break;
+                            $where .= $and . ITPINGS_CREATED_TIMESTAMP . " > DATE_SUB(NOW(), INTERVAL " . (int)$parameter_value . " " . $interval_unit . ")";
+                            break;
+                        case QUERY_PARAMETER_INTERVALUNIT:// processed in previous interval case
+                            break;
+                        case QUERY_PARAMETER_ORDERBY:
+                            if ($PARAMETER_HAS_SEPARATOR) {
+                                $orderbyfields = [];
+                                //accept only valid fieldnames
+                                foreach (explode(QUERY_PARAMETER_SEPARATOR, $parameter_value) as $fieldname) {
+                                    if (in_array($fieldname, VALID_QUERY_PARAMETERS)) $orderbyfields[] .= $fieldname;
+                                }
+                                $parameter_value = implode(QUERY_PARAMETER_SEPARATOR, $orderbyfields);
+                            }
+                            $order_sort = $urlVars[QUERY_PARAMETER_ORDERSORT] === "DESC" ? "DESC" : "ASC";
+                            $order .= " ORDER BY " . $parameter_value . " " . $order_sort;
+                            break;
+                        case QUERY_PARAMETER_LIMIT:
+                            $limit = " LIMIT " . Valued($parameter_value);
+                            break;
+                        default:
+                            if ($PARAMETER_HAS_SEPARATOR) {
+                                $where .= $and . "$parameter IN (" . $parameter_value . ")";//todo allow for strings
+                            } else {
+                                $parameter_value = (is_numeric($parameter_value) ? Valued($parameter_value) : Quoted($parameter_value));
+                                $where .= $and . "$parameter=" . $parameter_value;
+                            }
+                            break;
+                    }
                 }
             }
+            $sql = "SELECT * FROM $table_name";
+            if ($where !== "") $sql .= " WHERE " . $where;
+            $sql .= $order . ($limit === "" ? " LIMIT 1000" : $limit); //default LIMIT
         }
-        $sql = "SELECT * FROM $table_name";
-        if ($where !== "") $sql .= " WHERE " . $where;
-        $sql .= $order . ($limit === "" ? " LIMIT 1000" : $limit); //default LIMIT
-        echo $sql;
-        SQL_Query($sql, TRUE);
     }
+    SQL_Query($sql, TRUE);
 }
 
 
@@ -476,22 +521,22 @@ if (IS_POST) {
     $POST_body = trim(file_get_contents("php://input"));
 
     if (SAVE_BARE_POST_REQUESTS) {
-        SQL_Query("INSERT INTO " . TABLE_POSTREQUESTS . "(" . ITPINGS_POST_body . ") VALUES(" . Quoted($POSTbody) . ")");
+        SQL_Query("INSERT INTO " . TABLE_POSTREQUESTS . "(" . ITPINGS_POST_body . ") VALUES(" . Quoted($POST_body) . ")");
     }
 
     //global $request object processed by all above functions
     $request = json_decode($POST_body, TRUE); // TRUE return as Associative Array
 
     process_POSTrequest_Insert_Ping();      // create new _pingid in database asap
-    process_AllGateways();                  // save to 'pinged_gateways' and 'gateways' tables
-    process_ApplicationDevice_Information();
-    process_Sensors_From_PayloadFields();   // save to 'sensors' and 'sensorvalues' tables
-    process_POSTrequest_Update_Ping();
+    process_AllGateways();                  // get key_id or insert into 'pinged_gateways' and 'gateways' tables
+    process_ApplicationDevice_Information();// get key_id or insert into 'applications, Devices, ApplicationDevices' tables
+    process_Sensors_From_PayloadFields();   // get key_id or insert into 'sensors' and 'sensorvalues' tables
+    process_POSTrequest_Update_Ping();      // update request info in 'pings'
 
     echo "ITpings recorded a ping: " . $request[PRIMARYKEY_Ping];
 
 } else { // it is a GET (JSON) request
-    process_Query();
+    process_Query_with_QueryString_Parameters();
 }
 //endregion
 

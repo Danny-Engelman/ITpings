@@ -1,11 +1,1 @@
-# Created by .ignore support plugin (hsz.mobi)
-*database_access*
-.idea/
-42455046186-721448842-ticket.pdf
-RESTer-master.zip
-RESTer/
-ttn__SQL_schema.sql
-ttn__request_TRUNCATE.sql
-ttn__requests_CREATE_TABLE.sql
-ttn__requests_INSERT.sql
-ITpings_config_database_access.php
+ITpings_access_configuration.php

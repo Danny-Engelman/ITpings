@@ -9,6 +9,13 @@ define('DBNAME', 'ITpings');        // The database name given by your Database 
 define('DBUSERNAME', 'YOURUSERNAME');
 define('DBPASSWORD', 'YOURPASSWORD');
 
-//endregion == REQUIRED CONFIGURATION =============================================================
+// this key protects your webhook from being abused by others
+define('YOUR_ITPINGS_KEY','__ENTER_WHATEVER_YOU WANT_');
 
+// Now define a HTTP integration in your TTN Application Console
+// pointing to webhook: YOUR_WEBSERVER/ITpings_connector.php?key=YOUR_ITPINGS_KEY
+
+// The whole Database Schema will be created by ITpings when the connector is first executed
+
+//endregion == REQUIRED CONFIGURATION =============================================================
 ?>

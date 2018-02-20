@@ -11,37 +11,116 @@
     <script language="JavaScript">
 
     </script>
+    <!--
+    https://flatuicolors.com/palette/nl
+    -->
     <style>
         body {
             font-family: Helvetica Neue, Arial, sans-serif;
             font-size: 12px;
-            color: #444;
         }
 
         table {
             border: 1px solid #42b983;
+            table-layout: fixed;
+            width: 100%;
         }
 
-        th {
+        thead > tr > td {
             background-color: #42b983;
-            color: rgba(255, 255, 255, 0.66);
+            color: beige;
+            font-weight: bold;
         }
 
         td {
-            background-color: #f9f9f9;
             text-align: center;
+            color: darkgrey;
+            overflow: hidden;
         }
 
         th, td {
-            min-width: 80px;
+            min-width: 60px;
         }
 
+        [data-column='time'] {
+            width: 12em;
+        }
+
+        @media (max-width: 1024px) {
+            [data-column$='gtwid'],
+            [data-column$='location_source'],
+            [data-column='gtw_trusted'] {
+                width: .1px;
+                background: darkgrey;
+            }
+        }
+
+        @media (min-width: 1024px) {
+            [data-column='channel'],
+            [data-column='rssi'],
+            [data-column='snr'],
+            [data-column='rf_chain'],
+            [data-column$='gtwid'],
+            [data-column='gtw_trusted'] {
+                width: 6em;
+            }
+        }
+
+        TBODY.updatedTBODY .fadeOutCell {
+            animation: fadeOut 60s linear 0s;
+        }
+
+        @keyframes fadeOut {
+            0% {
+                background-color: lightgreen;
+                color: black;
+            }
+            100% {
+                background-color: transparent;
+                color: darkgrey;
+            }
+        }
+
+        table tbody:nth-child(odd).updatedTBODY {
+            background-color: beige;
+        }
+    </style>
+    <!--<style id="TABLE_hover_row_and_column" hidden>-->
+    <!--table {-->
+    <!--overflow: hidden;-->
+    <!--}-->
+
+    <!--tr:hover {-->
+    <!--background-color: #ffa;-->
+    <!--}-->
+
+    <!--td, th {-->
+    <!--position: relative;-->
+    <!--}-->
+
+    <!--td:hover::after,-->
+    <!--th:hover::after {-->
+    <!--content: "";-->
+    <!--position: absolute;-->
+    <!--background-color: #ffa;-->
+    <!--left: 0;-->
+    <!--top: -5000px;-->
+    <!--height: 10000px;-->
+    <!--width: 100%;-->
+    <!--z-index: -1;-->
+    <!--}-->
+    <!--</style>-->
+    <style id="hideTableColumnsWithCSS" disabled>
+        [data-column='timestamp'],
+        [data-column='created'],
         [data-column='payload_raw'],
         [data-column='downlink_url'] {
             display: none;
         }
-
+    </style>
+    <style id="itpings-chart">
         .chart {
+            height: 50vh;
             max-height: 50vh;
             position: relative;
         }
@@ -68,233 +147,312 @@
             color: white;
         }
     </style>
+    <script language="JavaScript" data-customelement="itp-table">
+        (function (thisDoc, elementName = 'itpings-table') {
+            const __ATTR_data_query = 'query';
+            let __log = (a, b, c) => console.log(`%cWC:${elementName}:`, 'background:lightgreen', a || '', b || '', c || '');
+
+            window.customElements.define(elementName, class extends HTMLElement {
+                static get observedAttributes() {                       /* HTML tag attributes this WebComponent listen to */
+                    __log('initiated observedAttributes');
+                    return [__ATTR_data_query];
+                }
+
+                constructor() {                                         /* WebComponent Constructor */
+                    super();
+                    __log('constructor');
+                }
+
+                attributeChangedCallback(attr, oldValue, newValue) {    /* dataAttributes changes */
+                    __log('attributeChanged', attr, oldValue, newValue);
+                    const _wc = this;
+                    _wc[attr] = newValue;
+                    if (attr === __ATTR_data_query) {
+                        let uri = location.href.split('/');                                                 // get endpoint from current uri location
+                        uri.pop();                                                                          // discard filename
+                        uri.push('ITpings_connector.php?query=' + newValue);                                // stick on query endpoint
+                        uri = uri.join('/');
+                        let filter = '';
+                        let idle = true;                                                                    // no new fetch when still waiting or previous one
+                        //possible refactor using: https://github.com/Mobius1/Vanilla-DataTables
+                        let element = x => document.createElement(x);
+                        let TABLE = document.createDocumentFragment().appendChild(element('TABLE'));        // new TABLE (as fragment)
+                        TABLE.maxid = false;
+                        TABLE.hiddenfields = new Set(['timestamp', 'created']);
+                        let section = x => TABLE.appendChild(element(x));
+                        let THEAD = section('THEAD');                                                       // add THEAD
+                        let TBODY = section('TBODY');                                                       // add (first) TBODY
+
+                        let addRow = (row, idx = 'head') => {                                               // function
+                            let TR = (idx === 'head' ? THEAD : TBODY).insertRow(idx);                       // add TR at bottom of THEAD _OR_ bottom/top TBODY
+                            Object.keys(row).map(name => {                                                  // add Columns
+                                if (!TABLE.hiddenfields.has(name)) {
+                                    let TD = TR.insertCell();
+                                    let value = idx === 'head' ? name : row[name];                              // add Header Name _OR_ Cell Value
+                                    if (name === TABLE.idfield && Number(value) > TABLE.maxid) TABLE.maxid = Number(value);
+                                    TR.setAttribute('data-' + name, value);                                     // plenty of attributes so we can apply CSS
+                                    TD.setAttribute('data-' + name, value);
+                                    TD.setAttribute('data-column', name);
+                                    TD.classList.add('fadeOutCell');                                            // color cell
+                                    TD.innerHTML = value;
+                                }
+                            });
+                        };
+
+                        (function fetchTableData() {                                                        // IIFE execution, after that by setTimeout
+                            if (idle) {
+                                idle = false;                                                               // true again AFTER fetch processing is done
+                                __log(uri + filter);
+                                fetch(uri + filter)
+                                    .then(response => response.json())
+                                    .then(json => {
+                                        if (!TABLE.idfield) {                                               // initialize TABLE
+                                            addRow(json[0]);                                                // first row keys are the THEAD columnheaders
+                                            TABLE.idfield = _wc.idfield || Object.keys(json[0])[0];         // take from attribute _OR_ first JSON row
+                                            json.map(addRow);                                               // add all rows
+                                            _wc.appendChild(TABLE);                                         // now append that sucker to the DOM
+                                        } else if (json.length) {                                           // add rows
+                                            TBODY = TABLE.insertBefore(section('TBODY'), TBODY);                    // in a new TBODY at the top of the TABLE
+                                            TBODY.classList.add('updatedTBODY');
+                                            json.map(row => addRow(row, 0));                                // add rows at top of TBODY
+                                        }
+                                        idle = true;
+                                        filter = '&filter=' + TABLE.idfield + ' gt ' + TABLE.maxid;         // add filter on uri to get only new values
+                                        if (heartbeat) setTimeout(fetchTableData, 1000);
+                                    })
+                            }
+                        })();
+                    }
+                }
+
+                connectedCallback() {                                   /* WebComponent is added to main DOM */
+                    __log('connected');
+                }
+            });
+        })(document.currentScript.ownerDocument); //webcomponent has its own DOM
+
+
+        (function (thisDoc, elementName = 'itpings-chart') {
+            const __ATTR_data_query = 'query';
+            const __ATTR_data_sensorname = 'sensorname';
+            const __ATTR_data_interval = 'interval';
+            const __ATTR_data_intervalunit = 'intervalunit';
+            let __log = (a, b, c) => console.log(`%cWC:${elementName}:`, 'background:lightblue', a || '', b || '', c || '');
+
+            window.customElements.define(elementName, class extends HTMLElement {
+                static get observedAttributes() {
+                    __log('initiated observedAttributes');
+                    return [__ATTR_data_query, __ATTR_data_sensorname, __ATTR_data_interval, __ATTR_data_intervalunit];
+                }
+
+                get sensorname() {
+                    __log('get sensorname');
+                    return this.getAttribute(__ATTR_data_sensorname);
+                }
+
+                set sensorname(newValue) {
+                    this.setAttribute(__ATTR_data_sensorname, newValue);
+                }
+
+                get interval() {
+                    return this.getAttribute(__ATTR_data_interval);
+                }
+
+                set interval(newValue) {
+                    this.setAttribute(__ATTR_data_interval, newValue);
+                }
+
+                get intervalunit() {
+                    return this.getAttribute(__ATTR_data_intervalunit);
+                }
+
+                set intervalunit(newValue) {
+                    this.setAttribute(__ATTR_data_intervalunit, newValue);
+                }
+
+                displayChart() {
+                    let CANVAS = this.CANVAS;
+                    let sensorname = this.sensorname;
+                    let interval = this.interval;
+                    let intervalunit = this.intervalunit;
+                    let uri = 'http://365csi.nl/itpings.nl/ITpings_connector.php?query=SensorValues&sensorname=' + sensorname + '&orderby=created&interval=' + interval + '&intervalunit=' + intervalunit;
+                    __log('displayChart', this);
+                    let chart = new Chart(CANVAS, {
+                        type: 'line',
+                        data: [],
+                        options: {
+                            maintainAspectRatio: false,
+                            title: {
+                                display: true,
+                                text: sensorname
+                            }
+                        }
+                    });
+                    fetch(uri)
+                        .then(response => response.json())
+                        .then(json => {
+                            let backgroundColors = "#e6194b,#3cb44b,#ffe119,#0082c8,#f58231,#911eb4,#46f0f0,#f032e6,#d2f53c,#fabebe,#008080,#e6beff,#aa6e28,#fffac8,#800000,#aaffc3,#808000,#ffd8b1,#000080,#808080".split(",");
+                            let lastpingid = 0;
+                            let chartdata = {
+                                labels: []
+                                , datasets: []
+                                , sensorids: []
+                            };
+                            let charttitle = '';
+                            chartdata = json.reduce(function (chartdata, value) {
+                                    charttitle = value.sensorname;
+                                    let dataset_index = chartdata.sensorids.indexOf(value._sensorid);
+                                    if (dataset_index < 0) {
+                                        dataset_index = chartdata.datasets.length;
+                                        chartdata.datasets.push({
+                                            label: value.dev_id
+                                            , fill: false
+                                            , lineTension: .5
+                                            , backgroundColor: backgroundColors[dataset_index]
+                                            , borderColor: backgroundColors[dataset_index]
+                                            , data: []
+                                        });
+                                        chartdata.sensorids.push(value._sensorid);
+                                    }
+                                    let x_label = value.created;//moment(value.created).format("ddd, M-D hA");
+                                    //let x_label = moment(value.created).format("D MMM H:mm");
+                                    //__log(value.created, x_label, value);
+                                    chartdata.datasets[dataset_index].data.push({
+                                        x: x_label,
+                                        y: value.sensorvalue
+                                    });
+                                    chartdata.labels.push(x_label);
+                                    lastpingid = value._pingid;
+                                    return chartdata;
+                                }
+                                , chartdata);
+                            chart.data.labels = chartdata.labels;
+                            chart.data.datasets = chartdata.datasets;
+                            chart.update();
+                        });
+                }
+
+                constructor() {                                         /* WebComponent Constructor */
+                    super();
+                    __log('constructor', this);
+                    let _wc = this;
+                    _wc.isReady = false;
+                    __log(_wc[__ATTR_data_sensorname]);
+                }
+
+                attributeChangedCallback(attr, oldValue, newValue) {    /* dataAttributes changes */
+                    __log('attributeChanged', attr, oldValue, newValue);
+                    // const _wc = this;
+                    // _wc[attr] = newValue;
+                    // if (attr === __ATTR_data_query) {
+                    //
+                    //     (function fetchData() {                                                        // IIFE execution, after that by setTimeout
+                    //         if (idle) {
+                    //         }
+                    //     })();
+                    // }
+                }
+
+                connectedCallback() {                                   /* WebComponent is added to main DOM */
+                    let _wc = this;
+                    __log('connected', _wc[__ATTR_data_sensorname]);
+                    let element = x => document.createElement(x);
+                    let DIV = element('DIV');
+                    DIV.classList.add('chart');
+                    let section = x => DIV.appendChild(element(x));
+                    _wc.CANVAS = section('CANVAS');
+                    let INTERVAL = section('DIV');
+                    INTERVAL.classList.add('chart_interval');
+
+                    let fragment = document.createDocumentFragment();
+                    [{
+                        label: '5m',
+                        interval: 5,
+                        intervalunit: 'MINUTE'
+                    }, {
+                        label: '30m',
+                        interval: 30,
+                        intervalunit: 'MINUTE'
+                    }, {
+                        label: '2H',
+                        interval: 2,
+                        intervalunit: 'HOUR'
+                    }, {
+                        label: '6H',
+                        interval: 6,
+                        intervalunit: 'HOUR'
+                    }, {
+                        label: '1D',
+                        interval: 1,
+                        intervalunit: 'DAY'
+                    }, {
+                        label: '2D',
+                        interval: 2,
+                        intervalunit: 'DAY'
+                    }, {
+                        label: '2W',
+                        interval: 2,
+                        intervalunit: 'WEEK'
+                    }, {
+                        label: '1M',
+                        interval: 1,
+                        intervalunit: 'MONTH'
+                    }, {
+                        label: '6M',
+                        interval: 6,
+                        intervalunit: 'MONTH'
+                    }, {
+                        label: '1Y',
+                        interval: 1,
+                        intervalunit: 'YEAR'
+                    }].map(function (interval) {
+                        let DIV = document.createElement('DIV');
+                        DIV.innerHTML = interval.label;
+                        DIV.setAttribute('data-label', interval.label);
+                        DIV.addEventListener('click', function () {
+                            alert(this.interval + this.intervalunit);
+                        }.bind(interval));
+                        fragment.appendChild(DIV);
+                    });
+
+                    INTERVAL.appendChild(fragment);
+                    _wc.appendChild(DIV);
+                    this.displayChart();
+                }
+
+                disconnectedCallback() {
+                    __log('disconnected');
+                }
+            });
+        })(document.currentScript.ownerDocument);
+
+        let heartbeat = false;
+    </script>
 </head>
 <body>
 <div id="Dashboard">
     <div class="chart" id="chart_temperature">
-        <canvas id="myChart" width="400" height="400"></canvas>
-        <div class="chart_interval"></div>
+        <itpings-chart sensorname="luminosity_6" interval="8" intervalunit="HOUR" query></itpings-chart>
     </div>
-    <itpings-chart></itpings-chart>
     <hr>
     <div class="grid">
         <div class="col-1-3">
-            <itpings-table data-query="devices"></itpings-table>
-            <itpings-table data-query="applications"></itpings-table>
-            <itpings-table data-query="gateways"></itpings-table>
+            <!--<itpings-table query="devices"></itpings-table>-->
+            <!--<itpings-table query="applications"></itpings-table>-->
+            <!--<itpings-table query="gateways"></itpings-table>-->
         </div>
         <div class="col-1-3">
-            <div data-query="pingedgateways"></div>
-            <div data-query="sensorvalues"></div>
-            <div data-query="sensors"></div>
+            <itpings-table query="PingedGateways">
+                <style></style>
+            </itpings-table>
+            <div query="sensorvalues"></div>
+            <div query="sensors"></div>
         </div>
         <div class="col-1-3">
-            <div data-query="pings"></div>
-            <div data-query="application_devices"></div>
+            <!--<itpings-table query="SensorValues"></itpings-table>-->
+            <div query="application_devices"></div>
         </div>
     </div>
 </div>
-<script language="JavaScript" data-customelement="itp-table">
-    (function (thisDoc, elementName = 'itpings-table') {
-//region ------------------------------------------------------------------------------------- ### globals & prototypes
-
-        const __ATTR_data_query = 'data-query';
-
-        let __log = (a, b, c) => console.log(`%cWC:${elementName}:`, 'background:lightgreen', a || '', b || '', c || '');
-//endregion -------------------------------------------------------------------------------------- globals & prototypes
-
-//region ------------------------------------------------------------------------------------- ### Classes
-
-//endregion -------------------------------------------------------------------------------------- Classes
-
-        window.customElements.define(elementName, class extends HTMLElement {
-
-            //region ------------------------------------------------------------------------------------- ### WebComponent INIT
-
-            static get observedAttributes() {                       /* HTML tag attributes this WebComponent listen to */
-                console.warn('initiated observedAttributes');
-                return [__ATTR_data_query];
-            }
-
-            constructor() {                                         /* WebComponent Constructor */
-                super();
-                __log('constructor');
-            }
-
-            attributeChangedCallback(attr, oldValue, newValue) {    /* dataAttributes changes */
-                __log('attributeChanged', attr, oldValue, newValue);
-                if (attr === __ATTR_data_query) {
-                    let uri = location.href.split('/');
-                    uri.pop();
-                    uri.push('ITpings_connector.php?query=' + newValue);
-                    uri = uri.join('/');
-                    fetch(uri)
-                        .then(response => response.json())
-                        .then(json => {
-                                // Create HTML TABLE, for a challenge refactor this to one .reduceRight call
-                                let headers = [], maxid = 0;// maximum Primary Key value read in this DB response
-                                // process rows first because the headers info is needed in the THEAD
-                                let TBODY = json.map(function (row) {
-                                    headers = Object.keys(row);
-                                    let TRdata = '';// stuff all data values as data-attributes on the TR tag
-                                    let TR = headers.map(function (columnName) {
-                                        let value = row[columnName];
-                                        if (columnName.indexOf('_') === 0) {// its a database primary _key
-                                            if (value > maxid) maxid = value;
-                                        }
-                                        let data = ' data-' + columnName + '="' + value + '"';
-                                        TRdata += data;
-                                        return '<TD data-column="' + columnName + '" ' + data + '>' + value + '</TD>';
-                                    }).join('');
-                                    return '<TR' + TRdata + '>' + TR + '</TR>';
-                                }).join('');
-
-                                this.innerHTML = '<TABLE data-query="' + uri + '" data-maxid=' + maxid + '><THEAD><TR>'
-                                    + headers.map(function (columnName) {
-                                        return '<TH data-column="' + columnName + '">' + columnName + '</TH>';
-                                    }).join('') + '</TR></THEAD>' + TBODY + '</TABLE>';
-
-                                setTimeout(function () {
-                                    window.me = this;
-                                    var TABLE = this.firstChild;
-                                    let maxid = TABLE.getAttribute('data-maxid');
-                                    let uri = TABLE.getAttribute('data-query');
-                                    console.log(maxid, uri, this);
-                                }.bind(this), 100);
-                            }
-                        );
-                }
-            }
-
-            connectedCallback() {                                   /* WebComponent is added to main DOM */
-                __log('connected');
-            }
-
-//endregion -------------------------------------------------------------------------------------- WebComponent INIT
-
-//region ------------------------------------------------------------------------------------- ### WebComponent METHODS
-
-
-//endregion -------------------------------------------------------------------------------------- WebComponent METHODS
-
-        });
-    })(document.currentScript.ownerDocument); //webcomponent has its own DOM
-</script>
-
-<script>
-    !function (window, document, config) {
-        window.ITpings = window.ITpings || {};
-        var IT = window.ITpings;
-
-        var heartbeat = 100000;//10seconds
-
-        class ITpingsdata {
-            fetchData(uri, callback) {
-                return fetch(uri).then(function (response) {
-                    return response.json();
-                }).then(callback);
-            }
-
-            constructor(query) {
-                fetchData(config.host + 'query=' + query, function (data) {
-
-                });
-            }
-        }
-
-        function addChartIntervals(chartdiv) {
-
-            var chart_intervals = [{
-                label: '5m',
-                interval: 5,
-                intervalunit: 'MINUTE'
-            }, {
-                label: '30m',
-                interval: 30,
-                intervalunit: 'MINUTE'
-            }, {
-                label: '2H',
-                interval: 2,
-                intervalunit: 'HOUR'
-            }, {
-                label: '6H',
-                interval: 6,
-                intervalunit: 'HOUR'
-            }, {
-                label: '1D',
-                interval: 1,
-                intervalunit: 'DAY'
-            }, {
-                label: '2D',
-                interval: 2,
-                intervalunit: 'DAY'
-            }, {
-                label: '2W',
-                interval: 2,
-                intervalunit: 'WEEK'
-            }, {
-                label: '1M',
-                interval: 1,
-                intervalunit: 'MONTH'
-            }, {
-                label: '6M',
-                interval: 6,
-                intervalunit: 'MONTH'
-            }, {
-                label: '1Y',
-                interval: 1,
-                intervalunit: 'YEAR'
-            }];
-
-            var fragment = document.createDocumentFragment();
-            chart_intervals.map(function (interval) {
-                var DIV = document.createElement('DIV');
-                DIV.innerHTML = interval.label;
-                DIV.setAttribute('data-label', interval.label);
-                DIV.addEventListener('click', function () {
-                    alert(this.interval + this.intervalunit);
-                }.bind(interval));
-                fragment.appendChild(DIV);
-            });
-            var el = document.querySelector(".chart_interval");
-            el.appendChild(fragment);
-        }
-
-        function initDashboard() {
-            addChartIntervals('myChart');
-            // document.querySelectorAll("[data-query]").forEach(function (div) {
-            //     var query = div.getAttribute('data-query');
-            //     var uri = host + 'query=' + query;
-            //     //+ "&" + location.search.split('?')[1];// append all query parameters
-            //     fetchData(uri, function (data) {
-            //         div.innerHTML = JSON2HTML(data, query);
-            //         console.info(query);
-            //     });
-            //
-            // });
-        }
-
-        function updateTable() {
-            //get last id from TABLE
-            //get query from
-            //query API for anything higher
-            //count X new rows
-            //while array elements
-            //get last array element
-            //add to top of TABLE/TBODY
-            //delete last row from TABLE/TBODY
-
-        }
-
-        initDashboard();
-        setInterval(function () {
-            //initDashboard();
-        }, heartbeat);
-
-    }(window, document, {
-        host: 'http://365csi.nl/itpings.nl/ITpings_connector.php?'
-    });
-
-</script>
 </body>
 </html>

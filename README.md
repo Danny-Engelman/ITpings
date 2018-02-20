@@ -1,3 +1,7 @@
+While most are working on the techie side
+
+For me UART is nothing but a 4 letter acronym. 
+
 # ITpings
 
 Is the TTN HTTP Integration for storing your TTN Application data in a MySQL database.
@@ -13,6 +17,9 @@ ITpings can be used by both beginner and advanced level PHP developers.
 
 * [Store data in MySQL using MQTT and Node-Red](https://ictoblog.nl/2017/04/15/ttn-mqtt-node-red-mysql-local-backup-of-your-lorawan-data)  
 This stores your data in **one** Database Table, ITpings uses a more advanced Database Schema
+
+* [MQTT-NodeJS-MySQL](https://github.com/Kaasfabriek/TTN-MQTT-To-MYSQL-AND-PHP-To-CSV)  
+also a single MySQL Table 
 
 ## Use ITpings HTTP Integration and Dashboard in (under) 5 minutes
 
@@ -41,14 +48,26 @@ and spent the Holidays playing with all Software related technologies.
 
 I have been a script kiddie since learning BASIC in the late 70s, hardware just is not my _**thing**_
 
+For me, every new project is a challenge to [think different](https://www.youtube.com/watch?v=4HsGAc0_Y5c) (a 15 minute must see).
+
 myDevices, Amazon Web Services, IBM's Node-Red and several more are by themselves great technologies to get started.
 
 But did not meet my growing list of requirements:
 
 * Track **all** my Nodes (=Sensors) in one View
+* In a generic dataformat, ready for any future application
+* Get (almost) live updates of new information 
 * 
-   
 
+From a simple SPA page it evolved into a labour of love, especially since I develop by the "Only necessary dependencies" rule.
+So I ditched React and Angular, considered Vue, and eventually went with Native ES6 WebComponents
+
+I hereby give donate her with an MIT License to the Open Source community,
+
+**... be gentle but just with her**   
+
+
+[*during the production of this product no dolphins were harmed*]
 ## (My)SQL Database schema
 
 It is not normalized to the Boyce-Codd Form

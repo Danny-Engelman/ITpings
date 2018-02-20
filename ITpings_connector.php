@@ -751,7 +751,7 @@ function post_process_Ping()
     $sql .= COMMA . TTN_payload_raw . "=" . Quoted($request[TTN_payload_raw]);
 
     $metadata = $request[TTN_metadata];
-    $sql .= COMMA . ITPINGS_TIME . "=" . Quoted($metadata[TTN_time]);
+    $sql .= COMMA . ITPINGS_TIME . "=" . Quoted($metadata[TTN_time]);//str_replace(array('-',':','/'),)
     $sql .= COMMA . ITPINGS_FREQUENCY . "=" . Valued($metadata[TTN_frequency]);
     $sql .= COMMA . ITPINGS_MODULATION . "=" . Quoted($metadata[TTN_modulation]);
     $sql .= COMMA . ITPINGS_DATA_RATE . "=" . Quoted($metadata[TTN_data_rate]);
@@ -955,8 +955,8 @@ function process_Query_with_QueryString_Parameters()
             }
         }
         $sql = "SELECT * FROM $table_name";
-        if ($where !== EMPTY_STRING) $sql .= " WHERE " . $where;
-        $sql .= $order . ($limit === EMPTY_STRING ? " LIMIT 1000" : $limit); //default LIMIT
+        $sql .= $where === EMPTY_STRING ? $where : " WHERE " . $where;
+        $sql .= $order . ($limit === EMPTY_STRING ? " LIMIT " . SQL_LIMIT_DEFAULT : $limit);
     }
 
     SQL_Query($sql, TRUE);

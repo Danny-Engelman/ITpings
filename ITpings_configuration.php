@@ -13,6 +13,8 @@ define('TTN_DOWNLINKROOT', 'https://integrations.thethingsnetwork.org/ttn-eu/api
 // Gateways outside this tolerance will be recorded as new (moved) Gateway
 define('GATEWAY_POSITION_TOLERANCE', '0.02');      // 20 Meter
 
+//default LIMIT when none is specified
+define('SQL_LIMIT_DEFAULT', 10);
 //endregion == APPLICATION CONFIGURATION ==========================================================
 
 //region ===== DATABASE SCHEMA AND CONFIGURATION ==================================================

@@ -1,11 +1,24 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <title>ITpings Dashboard</title>
+
     <meta charset="utf-8">
     <meta http-equiv="x-ua-compatible" content="ie=edge"> <!-- † -->
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
-    <title>ITpings Dashboard</title>
+    <!--<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"-->
+          <!--integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">-->
+    <!--<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js"-->
+            <!--integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN"-->
+            <!--crossorigin="anonymous"></script>-->
+    <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js"-->
+            <!--integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q"-->
+            <!--crossorigin="anonymous"></script>-->
+    <!--<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js"-->
+            <!--integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl"-->
+            <!--crossorigin="anonymous"></script>-->
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.19.1/moment.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.1/Chart.min.js"></script>
     <script language="JavaScript">
@@ -119,9 +132,9 @@
         }
     </style>
     <style id="itpings-chart">
-        .chart {
-            height: 50vh;
-            max-height: 50vh;
+        itpings-chart {
+            height: 30vh;
+            max-height: 30vh;
             position: relative;
         }
 
@@ -146,313 +159,52 @@
             background-color: green;
             color: white;
         }
+
+        .selectedInterval {
+            background-color: lightgreen;
+        }
     </style>
-    <script language="JavaScript" data-customelement="itp-table">
-        (function (thisDoc, elementName = 'itpings-table') {
-            const __ATTR_data_query = 'query';
-            let __log = (a, b, c) => console.log(`%cWC:${elementName}:`, 'background:lightgreen', a || '', b || '', c || '');
 
-            window.customElements.define(elementName, class extends HTMLElement {
-                static get observedAttributes() {                       /* HTML tag attributes this WebComponent listen to */
-                    __log('initiated observedAttributes');
-                    return [__ATTR_data_query];
-                }
+    <script language="JavaScript" src="ITpings_dashboard.js"></script>
 
-                constructor() {                                         /* WebComponent Constructor */
-                    super();
-                    __log('constructor');
-                }
-
-                attributeChangedCallback(attr, oldValue, newValue) {    /* dataAttributes changes */
-                    __log('attributeChanged', attr, oldValue, newValue);
-                    const _wc = this;
-                    _wc[attr] = newValue;
-                    if (attr === __ATTR_data_query) {
-                        let uri = location.href.split('/');                                                 // get endpoint from current uri location
-                        uri.pop();                                                                          // discard filename
-                        uri.push('ITpings_connector.php?query=' + newValue);                                // stick on query endpoint
-                        uri = uri.join('/');
-                        let filter = '';
-                        let idle = true;                                                                    // no new fetch when still waiting or previous one
-                        //possible refactor using: https://github.com/Mobius1/Vanilla-DataTables
-                        let element = x => document.createElement(x);
-                        let TABLE = document.createDocumentFragment().appendChild(element('TABLE'));        // new TABLE (as fragment)
-                        TABLE.maxid = false;
-                        TABLE.hiddenfields = new Set(['timestamp', 'created']);
-                        let section = x => TABLE.appendChild(element(x));
-                        let THEAD = section('THEAD');                                                       // add THEAD
-                        let TBODY = section('TBODY');                                                       // add (first) TBODY
-
-                        let addRow = (row, idx = 'head') => {                                               // function
-                            let TR = (idx === 'head' ? THEAD : TBODY).insertRow(idx);                       // add TR at bottom of THEAD _OR_ bottom/top TBODY
-                            Object.keys(row).map(name => {                                                  // add Columns
-                                if (!TABLE.hiddenfields.has(name)) {
-                                    let TD = TR.insertCell();
-                                    let value = idx === 'head' ? name : row[name];                              // add Header Name _OR_ Cell Value
-                                    if (name === TABLE.idfield && Number(value) > TABLE.maxid) TABLE.maxid = Number(value);
-                                    TR.setAttribute('data-' + name, value);                                     // plenty of attributes so we can apply CSS
-                                    TD.setAttribute('data-' + name, value);
-                                    TD.setAttribute('data-column', name);
-                                    TD.classList.add('fadeOutCell');                                            // color cell
-                                    TD.innerHTML = value;
-                                }
-                            });
-                        };
-
-                        (function fetchTableData() {                                                        // IIFE execution, after that by setTimeout
-                            if (idle) {
-                                idle = false;                                                               // true again AFTER fetch processing is done
-                                __log(uri + filter);
-                                fetch(uri + filter)
-                                    .then(response => response.json())
-                                    .then(json => {
-                                        if (!TABLE.idfield) {                                               // initialize TABLE
-                                            addRow(json[0]);                                                // first row keys are the THEAD columnheaders
-                                            TABLE.idfield = _wc.idfield || Object.keys(json[0])[0];         // take from attribute _OR_ first JSON row
-                                            json.map(addRow);                                               // add all rows
-                                            _wc.appendChild(TABLE);                                         // now append that sucker to the DOM
-                                        } else if (json.length) {                                           // add rows
-                                            TBODY = TABLE.insertBefore(section('TBODY'), TBODY);                    // in a new TBODY at the top of the TABLE
-                                            TBODY.classList.add('updatedTBODY');
-                                            json.map(row => addRow(row, 0));                                // add rows at top of TBODY
-                                        }
-                                        idle = true;
-                                        filter = '&filter=' + TABLE.idfield + ' gt ' + TABLE.maxid;         // add filter on uri to get only new values
-                                        if (heartbeat) setTimeout(fetchTableData, 1000);
-                                    })
-                            }
-                        })();
-                    }
-                }
-
-                connectedCallback() {                                   /* WebComponent is added to main DOM */
-                    __log('connected');
-                }
-            });
-        })(document.currentScript.ownerDocument); //webcomponent has its own DOM
-
-
-        (function (thisDoc, elementName = 'itpings-chart') {
-            const __ATTR_data_query = 'query';
-            const __ATTR_data_sensorname = 'sensorname';
-            const __ATTR_data_interval = 'interval';
-            const __ATTR_data_intervalunit = 'intervalunit';
-            let __log = (a, b, c) => console.log(`%cWC:${elementName}:`, 'background:lightblue', a || '', b || '', c || '');
-
-            window.customElements.define(elementName, class extends HTMLElement {
-                static get observedAttributes() {
-                    __log('initiated observedAttributes');
-                    return [__ATTR_data_query, __ATTR_data_sensorname, __ATTR_data_interval, __ATTR_data_intervalunit];
-                }
-
-                get sensorname() {
-                    __log('get sensorname');
-                    return this.getAttribute(__ATTR_data_sensorname);
-                }
-
-                set sensorname(newValue) {
-                    this.setAttribute(__ATTR_data_sensorname, newValue);
-                }
-
-                get interval() {
-                    return this.getAttribute(__ATTR_data_interval);
-                }
-
-                set interval(newValue) {
-                    this.setAttribute(__ATTR_data_interval, newValue);
-                }
-
-                get intervalunit() {
-                    return this.getAttribute(__ATTR_data_intervalunit);
-                }
-
-                set intervalunit(newValue) {
-                    this.setAttribute(__ATTR_data_intervalunit, newValue);
-                }
-
-                displayChart() {
-                    let CANVAS = this.CANVAS;
-                    let sensorname = this.sensorname;
-                    let interval = this.interval;
-                    let intervalunit = this.intervalunit;
-                    let uri = 'http://365csi.nl/itpings.nl/ITpings_connector.php?query=SensorValues&sensorname=' + sensorname + '&orderby=created&interval=' + interval + '&intervalunit=' + intervalunit;
-                    __log('displayChart', this);
-                    let chart = new Chart(CANVAS, {
-                        type: 'line',
-                        data: [],
-                        options: {
-                            maintainAspectRatio: false,
-                            title: {
-                                display: true,
-                                text: sensorname
-                            }
-                        }
-                    });
-                    fetch(uri)
-                        .then(response => response.json())
-                        .then(json => {
-                            let backgroundColors = "#e6194b,#3cb44b,#ffe119,#0082c8,#f58231,#911eb4,#46f0f0,#f032e6,#d2f53c,#fabebe,#008080,#e6beff,#aa6e28,#fffac8,#800000,#aaffc3,#808000,#ffd8b1,#000080,#808080".split(",");
-                            let lastpingid = 0;
-                            let chartdata = {
-                                labels: []
-                                , datasets: []
-                                , sensorids: []
-                            };
-                            let charttitle = '';
-                            chartdata = json.reduce(function (chartdata, value) {
-                                    charttitle = value.sensorname;
-                                    let dataset_index = chartdata.sensorids.indexOf(value._sensorid);
-                                    if (dataset_index < 0) {
-                                        dataset_index = chartdata.datasets.length;
-                                        chartdata.datasets.push({
-                                            label: value.dev_id
-                                            , fill: false
-                                            , lineTension: .5
-                                            , backgroundColor: backgroundColors[dataset_index]
-                                            , borderColor: backgroundColors[dataset_index]
-                                            , data: []
-                                        });
-                                        chartdata.sensorids.push(value._sensorid);
-                                    }
-                                    let x_label = value.created;//moment(value.created).format("ddd, M-D hA");
-                                    //let x_label = moment(value.created).format("D MMM H:mm");
-                                    //__log(value.created, x_label, value);
-                                    chartdata.datasets[dataset_index].data.push({
-                                        x: x_label,
-                                        y: value.sensorvalue
-                                    });
-                                    chartdata.labels.push(x_label);
-                                    lastpingid = value._pingid;
-                                    return chartdata;
-                                }
-                                , chartdata);
-                            chart.data.labels = chartdata.labels;
-                            chart.data.datasets = chartdata.datasets;
-                            chart.update();
-                        });
-                }
-
-                constructor() {                                         /* WebComponent Constructor */
-                    super();
-                    __log('constructor', this);
-                    let _wc = this;
-                    _wc.isReady = false;
-                    __log(_wc[__ATTR_data_sensorname]);
-                }
-
-                attributeChangedCallback(attr, oldValue, newValue) {    /* dataAttributes changes */
-                    __log('attributeChanged', attr, oldValue, newValue);
-                    // const _wc = this;
-                    // _wc[attr] = newValue;
-                    // if (attr === __ATTR_data_query) {
-                    //
-                    //     (function fetchData() {                                                        // IIFE execution, after that by setTimeout
-                    //         if (idle) {
-                    //         }
-                    //     })();
-                    // }
-                }
-
-                connectedCallback() {                                   /* WebComponent is added to main DOM */
-                    let _wc = this;
-                    __log('connected', _wc[__ATTR_data_sensorname]);
-                    let element = x => document.createElement(x);
-                    let DIV = element('DIV');
-                    DIV.classList.add('chart');
-                    let section = x => DIV.appendChild(element(x));
-                    _wc.CANVAS = section('CANVAS');
-                    let INTERVAL = section('DIV');
-                    INTERVAL.classList.add('chart_interval');
-
-                    let fragment = document.createDocumentFragment();
-                    [{
-                        label: '5m',
-                        interval: 5,
-                        intervalunit: 'MINUTE'
-                    }, {
-                        label: '30m',
-                        interval: 30,
-                        intervalunit: 'MINUTE'
-                    }, {
-                        label: '2H',
-                        interval: 2,
-                        intervalunit: 'HOUR'
-                    }, {
-                        label: '6H',
-                        interval: 6,
-                        intervalunit: 'HOUR'
-                    }, {
-                        label: '1D',
-                        interval: 1,
-                        intervalunit: 'DAY'
-                    }, {
-                        label: '2D',
-                        interval: 2,
-                        intervalunit: 'DAY'
-                    }, {
-                        label: '2W',
-                        interval: 2,
-                        intervalunit: 'WEEK'
-                    }, {
-                        label: '1M',
-                        interval: 1,
-                        intervalunit: 'MONTH'
-                    }, {
-                        label: '6M',
-                        interval: 6,
-                        intervalunit: 'MONTH'
-                    }, {
-                        label: '1Y',
-                        interval: 1,
-                        intervalunit: 'YEAR'
-                    }].map(function (interval) {
-                        let DIV = document.createElement('DIV');
-                        DIV.innerHTML = interval.label;
-                        DIV.setAttribute('data-label', interval.label);
-                        DIV.addEventListener('click', function () {
-                            alert(this.interval + this.intervalunit);
-                        }.bind(interval));
-                        fragment.appendChild(DIV);
-                    });
-
-                    INTERVAL.appendChild(fragment);
-                    _wc.appendChild(DIV);
-                    this.displayChart();
-                }
-
-                disconnectedCallback() {
-                    __log('disconnected');
-                }
-            });
-        })(document.currentScript.ownerDocument);
-
-        let heartbeat = false;
-    </script>
+    <style>
+        TR[data-dev_id='ttn_node_365csi_nl_002']{
+            background-color: #42b983;
+        }
+    </style>
 </head>
 <body>
-<div id="Dashboard">
-    <div class="chart" id="chart_temperature">
-        <itpings-chart sensorname="luminosity_6" interval="8" intervalunit="HOUR" query></itpings-chart>
-    </div>
-    <hr>
-    <div class="grid">
-        <div class="col-1-3">
-            <!--<itpings-table query="devices"></itpings-table>-->
-            <!--<itpings-table query="applications"></itpings-table>-->
-            <!--<itpings-table query="gateways"></itpings-table>-->
-        </div>
-        <div class="col-1-3">
-            <itpings-table query="PingedGateways">
-                <style></style>
-            </itpings-table>
-            <div query="sensorvalues"></div>
-            <div query="sensors"></div>
-        </div>
-        <div class="col-1-3">
-            <!--<itpings-table query="SensorValues"></itpings-table>-->
-            <div query="application_devices"></div>
-        </div>
-    </div>
-</div>
+<table>
+    <thead>
+    <tr>
+        <th></th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td>
+            <itpings-table query="applications"></itpings-table>
+            <itpings-table query="devices"></itpings-table>
+        </td>
+        <td>
+            <itpings-chart chartid="temp" sensorname="temperature_5" interval="2" intervalunit="DAY"></itpings-chart>
+        </td>
+        <td>
+            <itpings-chart chartid="luminosity" sensorname="luminosity_6" interval="6"
+                           intervalunit="HOUR"></itpings-chart>
+        </td>
+    </tr>
+    <tr>
+        <td>
+            <itpings-table query="gateways"></itpings-table>
+        </td>
+        <td colspan="2">
+            <itpings-table query="PingedGateways"></itpings-table>
+            <itpings-table query="SensorValues"></itpings-table>
+        </td>
+    </tr>
+
+    </tbody>
+</table>
 </body>
 </html>

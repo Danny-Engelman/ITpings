@@ -17,9 +17,10 @@ ITpings can be used by both beginner and advanced level PHP developers.
 
 * [Store data in MySQL using MQTT and Node-Red](https://ictoblog.nl/2017/04/15/ttn-mqtt-node-red-mysql-local-backup-of-your-lorawan-data)  
 This stores your data in **one** Database Table, ITpings uses a more advanced Database Schema
-
 * [MQTT-NodeJS-MySQL](https://github.com/Kaasfabriek/TTN-MQTT-To-MYSQL-AND-PHP-To-CSV)  
 also a single MySQL Table 
+* [Visualize and push your IoT data](https://www.thethingsnetwork.org/forum/t/visualize-and-push-your-iot-data/1788)  
+A long.. long.. list of IoT related tools
 
 ## Use ITpings HTTP Integration and Dashboard in (under) 5 minutes
 
@@ -43,8 +44,8 @@ ITpings will create the Database Schema once it receives a first Ping
 
 ## Why ITpings was created
 
-I received my The Things Network (TTN) Gateway and 2 handfull of TTN Nodes late december 2017;  
-and spent the Holidays playing with all Software related technologies.  
+My (TTN) The Things Network Gateway and 2 handfull of TTN Nodes arrived late december 2017;  
+so spent the Holidays playing with all Software related technologies.  
 
 I have been a script kiddie since learning BASIC in the late 70s, hardware just is not my _**thing**_
 
@@ -54,6 +55,7 @@ myDevices, Amazon Web Services, IBM's Node-Red and several more are by themselve
 
 But did not meet my growing list of requirements:
 
+* plug & play in any new environment, without registering any Node info
 * Track **all** my Nodes (=Sensors) in one View
 * In a generic dataformat, ready for any future application
 * Get (almost) live updates of new information 
@@ -70,9 +72,14 @@ I hereby give donate her with an MIT License to the Open Source community,
 [*during the production of this product no dolphins were harmed*]
 ## (My)SQL Database schema
 
-It is not normalized to the Boyce-Codd Form
+Normalized for usability ()Boyce-Codd is something for the future)
 
 ![](https://i.imgur.com/dTlBzVQ.jpg)
+
+### Future enhancements
+
+* Normalize all ``ping.meta_*`` fields to separate tables.
+* Purge old information like ``downlink_url`` and ``payload_raw`` 
 
 ### MySQL Database management alternatives
 

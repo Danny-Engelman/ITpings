@@ -960,7 +960,6 @@ function process_Query_with_QueryString_Parameters()
     }
 
     SQL_Query($sql, TRUE);
-
 }
 
 //endregion == PROCESS ITPINGS GET QUERY ==========================================================

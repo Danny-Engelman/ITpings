@@ -3,8 +3,15 @@ include('ITpings_access_database.php');
 
 //region ===== APPLICATION CONFIGURATION ==========================================================
 
+// IP address:port where Ping came from
+define('PING_ORIGIN', ($_SERVER['HTTP_CLIENT_IP'] ?: ($_SERVER['HTTP_X_FORWARDE‌​D_FOR'] ?: $_SERVER['REMOTE_ADDR'])) . ':' . $_SERVER['REMOTE_PORT']);
+
+// CREATE Complete ITpings Database Schema IF it does not exist, set to FALSE to disable the check
+define('CREATE_DATABASE_ON_FIRST_PING', TRUE);
+
 // set to FALSE in Production to save lots of database resources, can be used for debugging purposes
-define('SAVE_POST_AS_STRING_TO_A_SINGLE_POSTrequests_TABLE', TRUE);
+// after first run, in an existing database you have to add/delete the POSTrequest Table by hand
+define('SAVE_POST_AS_ONE_STRING', TRUE);
 
 // GPS has inaccurate fixes, to prevent 'moving' Gateway recordings a tolerance for lat/lon is calculated
 // Gateways outside this tolerance will be recorded as new (moved) Gateway
@@ -35,23 +42,21 @@ define('CHECK_HEIGHT_FOR_PING', TRUE);
 /** ==> Creation of Tables and Views is in the ITpings_connector.php file **/
 
 define('USE_REFERENTIAL_INTEGRITY', TRUE);  // FALSE will NOT create Indexes and Foreign Keys
-define('USE_LOOKUP_TABLES', TRUE);          // Single string entries get their own (Normalized) Lookup Table
 
-// Use abbriated fieldnames, not to waste characters in JSON output
-// eg. latitude = lat
-define('SHORTJSON', TRUE);
+// Prefix for Tables and Views
+// optional double underscore groups table list in PHPMyAdmin
+define('TABLE_PREFIX', 'ITpings__');
 
-
-define('TABLE_PREFIX', 'ITpings__');    // optional double underscore groups table list in PHPMyAdmin
-
-
-define('TABLE_FREQUENCIES', TABLE_PREFIX . 'frequencies');                  // store in own table to save N bytes in pings table
-define('TABLE_MODULATIONS', TABLE_PREFIX . 'modulations');                  // store in own table to save N bytes in pings table
-define('TABLE_DATARATES', TABLE_PREFIX . 'datarates');                      // store in own table to save N bytes in pings table
-define('TABLE_CODINGRATES', TABLE_PREFIX . 'codingrates');                  // store in own table to save N bytes in pings table
+// Lookup Tables
+define('TABLE_FREQUENCIES', TABLE_PREFIX . 'frequencies');
+define('TABLE_MODULATIONS', TABLE_PREFIX . 'modulations');
+define('TABLE_DATARATES', TABLE_PREFIX . 'datarates');
+define('TABLE_CODINGRATES', TABLE_PREFIX . 'codingrates');
 
 define('TABLE_LOCATIONS', TABLE_PREFIX . 'locations');
 
+// Main Tables
+define('TABLE_ORIGINS', TABLE_PREFIX . 'origins');
 define('TABLE_EVENTS', TABLE_PREFIX . 'events');
 define('TABLE_POSTREQUESTS', TABLE_PREFIX . 'POSTrequests');
 define('TABLE_APPLICATIONS', TABLE_PREFIX . 'applications');
@@ -65,7 +70,8 @@ define('TABLE_SENSORVALUES', TABLE_PREFIX . 'sensorvalues');
 
 // All Tables, order complies with referential integrity, so DROP TABLE is executed in correct order
 define('ITPINGS_TABLES', array(
-    TABLE_EVENTS
+    TABLE_ORIGINS
+, TABLE_EVENTS
 , TABLE_SENSORVALUES
 , TABLE_SENSORS
 , TABLE_PINGEDGATEWAYS
@@ -85,6 +91,7 @@ define('ITPINGS_TABLES', array(
 // ITpings Table field keys, beware they don't collide with the TTN JSON fieldname definitions below
 define('PRIMARYKEY_PREFIX', '_');
 define('PRIMARYKEY_POSTrequests', PRIMARYKEY_PREFIX . 'postid');
+define('PRIMARYKEY_Origin', PRIMARYKEY_PREFIX . 'originid');
 define('PRIMARYKEY_Application', PRIMARYKEY_PREFIX . 'appid');
 define('PRIMARYKEY_Device', PRIMARYKEY_PREFIX . 'devid');
 define('PRIMARYKEY_ApplicationDevice', PRIMARYKEY_PREFIX . 'appdevid');
@@ -101,6 +108,7 @@ define('PRIMARYKEY_Sensor', PRIMARYKEY_PREFIX . 'sensorid');
 
 //region ===== DATE TIME CONVERSIONS ==============================================================
 
+// under development
 define('CONVERT_DATESTRINGS_TO_DATETIME', TRUE);
 
 define('TYPE_TTN_TIME_STRING', 'VARCHAR(30)');       // "2018-01-25T11:40:43.427237826Z" = 30 characters
@@ -109,48 +117,111 @@ define('TYPE_TTN_TIME_STRING', 'VARCHAR(30)');       // "2018-01-25T11:40:43.427
 define('TYPE_TTN_TIME_DATETIME', 'DATETIME');
 define('TYPE_TTN_TIME_COMMENT', 'converted TTN time WITHOUT FRACTION IN OLDER MySQL server!');
 
-define('TYPE_TYPE_TIMESTAMP', 'INT UNSIGNED');      // ?? Timestamp when the gateway received the message
-
+define('TYPE_PINGED_GATEWAY_TIMESTAMP', 'INT UNSIGNED');      // ?? Timestamp when the gateway received the message
 
 //endregion == DATE TIME CONVERSIONS ==============================================================
 
+/**
+ * Database Schema TYPE standards MATCHING the TTN JSON fieldnames, CHANGE with CARE!
+ **/
 
-//TTN JSON fieldname definitions, defined in the TTN HTTP integration (Cayenne style)
+define('TYPE_TTN_ID_FIELD', 'VARCHAR(512)');       // ?? what are the TTN maximums?
+
 define('TTN_app_id', 'app_id');
+define('TYPE_TTN_APP_ID', TYPE_TTN_ID_FIELD);
+define('TYPE_TTN_APP_DESCRIPTION', TYPE_TTN_ID_FIELD);
+
 define('TTN_dev_id', 'dev_id');
+define('TYPE_TTN_DEVICE_ID', TYPE_TTN_ID_FIELD);
+
 define('TTN_gtw_id', 'gtw_id');
+define('TYPE_TTN_GTW_ID', TYPE_TTN_ID_FIELD);
 
 define('TTN_hardware_serial', 'hardware_serial');
+define('TYPE_TTN_HARDWARE_SERIAL', 'VARCHAR(16)');  // LoraWan: Device EUI
 
 define('TTN_latitude', 'latitude');
+define('ITPINGS_LATITUDE', 'lat');      // used in ITpings Tables and JSON output
+define('LATITUDE_ACCURACY', 'DECIMAL(10,8)');       // -90 to 90 with 8 decimals (TTN does 7 decimals)
+
 define('TTN_longitude', 'longitude');
+define('ITPINGS_LONGITUDE', 'lon');
+define('LONGITUDE_ACCURACY', 'DECIMAL(11,8)');      // -180 to 180 with 8 decimals (TTN does 7 decimals)
+
 define('TTN_altitude', 'altitude');
+define('ITPINGS_ALTITUDE', 'alt');
+define('ALTITUDE_ACCURACY', 'DECIMAL(5,2)');        // centimeter accuracy up to 999,99
 
-//fieldnames in TTN JSON format
 define('TTN_gtw_trusted', 'gtw_trusted');
-define('TTN_location_source', 'location_source');
-define('TTN_timestamp', 'timestamp');
-define('TTN_time', 'time');
-define('TTN_channel', 'channel');
-define('TTN_rssi', 'rssi');
-define('TTN_snr', 'snr');
-define('TTN_rf_chain', 'rf_chain');
-define('TTN_port', 'port');
-define('TTN_downlink_url', 'downlink_url');
-define('TTN_counter', 'counter');
-define('TTN_payload_raw', 'payload_raw');
-define('TTN_frequency', 'frequency');
-define('TTN_airtime', 'airtime');
-define('TTN_modulation', 'modulation');
-define('TTN_data_rate', 'data_rate');
-define('TTN_coding_rate', 'coding_rate');
+define('TYPE_TTN_TRUSTED_GTW', 'TINYINT UNSIGNED NOT NULL DEFAULT 0'); // boolean
 
-//used to reference TTN JSON structure
+define('TTN_location_source', 'location_source');
+// Requires ITPINGS declaration for TTN references
+// check where TTN references are used!
+// define('TTN_location_source', 'location_source');
+// define('TTN_location_source', 'src'); // BREAKS!
+define('TYPE_LOCATION_SOURCE', 'TINYINT UNSIGNED'); // ?? "registry" what else? // hardcoded as 1 in SQL code !!
+
+define('TTN_timestamp', 'timestamp');
+
+define('TTN_time', 'time');
+define('ITPINGS_TIME', TTN_time);
+
+define('TTN_channel', 'channel');
+define('TYPE_TTN_CHANNEL', 'TINYINT UNSIGNED');     // ?? 0 - 7
+
+define('TTN_rssi', 'rssi');
+define('TYPE_TTN_RSSI', 'TINYINT SIGNED');          // ?? -85 dBm to -45dBm
+
+define('TTN_snr', 'snr');
+define('TYPE_TTN_SNR', 'DECIMAL(4,2)');             // ?? 8.25 Decibels ?? DD.dd
+
+define('TTN_rf_chain', 'rf_chain');
+define('TYPE_TTN_RFCHAIN', 'TINYINT UNSIGNED');     // ?? 0 or 1
+
+define('TTN_port', 'port');
+define('TYPE_TTN_PORT', 'TINYINT UNSIGNED');        // ?? always 1 ??
+
+define('TTN_downlink_url', 'downlink_url');
+define('TYPE_TTN_DOWNLINK', 'VARCHAR(1024)');       // ?? save Web URL = 2000
+
+define('TTN_counter', 'counter');
+define('TYPE_TTN_FRAME_COUNTER', 'INT UNSIGNED');   // Frame Counter
+
+define('TTN_payload_raw', 'payload_raw');
+define('TYPE_TTN_PAYLOAD_RAW', 'VARCHAR(256)');    // ?? 256 enough?
+
+define('TTN_frequency', 'frequency');
+define('ITPINGS_FREQUENCY', TTN_frequency);
+//https://www.thethingsnetwork.org/wiki/LoRaWAN/Frequencies/Frequency-Plans
+define('TYPE_TTN_FREQUENCY', 'DECIMAL(4,1)');       // ?? 867.1  is DDD,d enough?
+
+define('TTN_modulation', 'modulation');
+define('ITPINGS_MODULATION', TTN_modulation);
+define('TYPE_TTN_MODULATION', 'VARCHAR(16)');       // ?? "LORA" or anything else?
+
+define('TTN_data_rate', 'data_rate');
+define('ITPINGS_DATA_RATE', TTN_data_rate);
+define('TYPE_TTN_DATA_RATE', 'VARCHAR(9)');         // ?? "SF7BW125" to "SF12BW500"
+
+define('TTN_coding_rate', 'coding_rate');
+define('ITPINGS_CODING_RATE', TTN_coding_rate);
+define('TYPE_TTN_CODING_RATE', 'VARCHAR(16)');      // ?? "4/5"
+
+define('ITPINGS_ORIGIN', 'origin');
+define('TYPE_ITPINGS_ORIGIN', 'VARCHAR(16)');
+
+//used to reference TTN (Cayenne?) JSON structure; better not change!
 define('TTN_metadata', 'metadata');
 define('TTN_gateways', 'gateways');
 define('TTN_payload_fields', 'payload_fields');
 
-//Sensor names
+//Sensor names and values
+define('TYPE_PAYLOAD_KEY', 'VARCHAR(256)');         // key name in JSON payload
+define('TYPE_PAYLOAD_VALUE', 'VARCHAR(1024)');      // key value in JSON payload
+
+
+//Cayenne LPP Sensor names
 define('TTN_Cayenne_accelerometer', 'accelerometer_7');
 define('TTN_Cayenne_analog_in', 'analog_in_4');
 define('TTN_Cayenne_digital_in_1', 'digital_in_1');
@@ -201,73 +272,6 @@ define('ITPINGS_DESCRIPTION', 'description');
 define('ITPINGS_POST_body', 'body');
 define('TYPE_POST_BODY', 'VARCHAR(4048)');
 
-//ITpings fieldnames referencing TTN fields
-define('ITPINGS_METADATA_PREFIX', 'meta_');  // for clear SQL building make sure all fieldnames in all tables are unique
-define('ITPINGS_TIME', ITPINGS_METADATA_PREFIX . TTN_time);
-define('ITPINGS_FREQUENCY', ITPINGS_METADATA_PREFIX . TTN_frequency);
-define('ITPINGS_MODULATION', ITPINGS_METADATA_PREFIX . TTN_modulation);
-define('ITPINGS_DATA_RATE', ITPINGS_METADATA_PREFIX . TTN_data_rate);
-define('ITPINGS_CODING_RATE', ITPINGS_METADATA_PREFIX . TTN_coding_rate);
-
-/**
- * Overrule with shorter fieldnames
- **/
-if (SHORTJSON) {
-    define('ITPINGS_LATITUDE', 'lat');
-    define('ITPINGS_LONGITUDE', 'lon');
-    define('ITPINGS_ALTITUDE', 'alt');
-// Requires ITPINGS declaration for TTN references
-// check where TTN references are used!
-// define('TTN_location_source', 'location_source');
-// define('TTN_location_source', 'src'); // BREAKS!
-} else {
-    define('LOCATION_PREFIX', ITPINGS_METADATA_PREFIX);
-    define('ITPINGS_LATITUDE', LOCATION_PREFIX . TTN_latitude);
-    define('ITPINGS_LONGITUDE', LOCATION_PREFIX . TTN_longitude);
-    define('ITPINGS_ALTITUDE', LOCATION_PREFIX . TTN_altitude);
-
-}
-
-/**
- * Database Schema TYPE standards MATCHING the TTN JSON fieldnames, CHANGE with CARE!
- **/
-
-define('TYPE_TTN_ID_FIELD', 'VARCHAR(512)');       // ?? what are the TTN maximums?
-define('TYPE_TTN_APP_ID', TYPE_TTN_ID_FIELD);
-define('TYPE_TTN_APP_DESCRIPTION', TYPE_TTN_ID_FIELD);
-define('TYPE_TTN_GTW_ID', TYPE_TTN_ID_FIELD);
-define('TYPE_TTN_DEVICE_ID', TYPE_TTN_ID_FIELD);
-
-define('TYPE_TTN_TRUSTED_GTW', 'TINYINT UNSIGNED NOT NULL DEFAULT 0'); // boolean
-
-define('TYPE_TTN_FRAME_COUNTER', 'INT UNSIGNED');   // Frame Counter
-
-define('TYPE_TTN_DOWNLINK', 'VARCHAR(1024)');       // ?? save Web URL = 2000
-define('TYPE_TTN_PAYLOAD_RAW', 'VARCHAR(1024)');    // ?? 256 enough?
-
-define('TYPE_TTN_CHANNEL', 'TINYINT UNSIGNED');     // ?? 0 - 7
-define('TYPE_TTN_RSSI', 'TINYINT SIGNED');          // ?? -85 dBm to -45dBm
-define('TYPE_TTN_SNR', 'DECIMAL(4,2)');             // ?? 8.25 Decibels ?? DD.dd
-define('TYPE_TTN_RFCHAIN', 'TINYINT UNSIGNED');     // ?? 0 or 1
-
-define('TYPE_TTN_HARDWARE_SERIAL', 'VARCHAR(16)');  // LoraWan: Device EUI
-
-define('TYPE_TTN_PORT', 'TINYINT UNSIGNED');        // ?? always 1 ??
-
-//https://www.thethingsnetwork.org/wiki/LoRaWAN/Frequencies/Frequency-Plans
-define('TYPE_TTN_FREQUENCY', 'DECIMAL(4,1)');       // ?? 867.1  is DDD,d enough?
-define('TYPE_TTN_MODULATION', 'VARCHAR(16)');       // ?? "LORA" or anything else?
-define('TYPE_TTN_DATA_RATE', 'VARCHAR(9)');         // ?? "SF7BW125" to "SF12BW500"
-define('TYPE_TTN_CODING_RATE', 'VARCHAR(16)');      // ?? "4/5"
-
-define('LATITUDE_ACCURACY', 'DECIMAL(10,8)');       // -90 to 90 with 8 decimals (TTN does 7 decimals)
-define('LONGITUDE_ACCURACY', 'DECIMAL(11,8)');      // -180 to 180 with 8 decimals (TTN does 7 decimals)
-define('ALTITUDE_ACCURACY', 'DECIMAL(5,2)');        // centimeter accuracy up to 999,99
-define('TYPE_LOCATION_SOURCE', 'TINYINT UNSIGNED'); // ?? "registry" what else? // hardcoded as 1 in SQL code !!
-
-define('TYPE_PAYLOAD_KEY', 'VARCHAR(256)');         // key name in JSON payload
-define('TYPE_PAYLOAD_VALUE', 'VARCHAR(1024)');      // key value in JSON payload
-
 //endregion == ITPINGS AND (TTN) THE THINGS NETWORK JSON FIELDNAMES ===============================
 
 
@@ -290,6 +294,7 @@ define('ITpings_PrimaryKey_In_Table', 'ITpings PrimaryKey in ');
 define('VIEWNAME_EVENTS', TABLE_PREFIX . 'Events');
 define('VIEWNAME_APPLICATIONDEVICES', TABLE_PREFIX . 'ApplicationDevices');
 define('VIEWNAME_SENSORVALUES', TABLE_PREFIX . 'SensorValues');
+define('VIEWNAME_GATEWAYS', TABLE_PREFIX . 'Gateways');
 define('VIEWNAME_PINGEDGATEWAYS', TABLE_PREFIX . 'PingedGateways');
 
 define('ITPINGS_VIEWNAMES', [

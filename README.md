@@ -10,7 +10,7 @@ There is a reason why CLI is the (hyped)term the past years
 
 # ITpings - '_Just Give Me The Data_'
 
-ITpings can be used by both beginner and advanced level PHP developers.
+ITpings can be used by both beginner and advanced developers.
 
 * ITpings Is the [HTTP Integration](https://www.thethingsnetwork.org/docs/applications/http/) from The Things Network to your own MySQL database
 * ITpings Creates the MySQL Database Tables for you
@@ -30,7 +30,7 @@ A long.. long.. list of IoT related tools
 Reading this README (before diving head in first) will give you more insight in technical/technology choices.
 
 If you still want to get started now,  
-please do: 
+### Install and Configure ITpings in 5 steps: 
 
 
 1. Create a 'ITpings' Database in your MySQL server
@@ -43,7 +43,7 @@ pointing to the ``YOURWEBSERVER/ITpings_connector.php?key=YOURKEY``
   **Yes! That is it!**  
 ITpings will create the Database Schema once it receives a first Ping
 
-5. Now open ``ITpings_dashboard.html``
+5. Now open ``ITpings_dashboard.html`` on your WebServer
 
 ## Why ITpings was created
 
@@ -63,8 +63,8 @@ But did not meet my growing list of requirements:
 * Get (almost) live updates of new information 
 * Issue an alarm when a device was not seen for over an hour 
 
-From a simple SPA page it evolved into a labour of love, especially since I develop by the "Only necessary dependencies" rule.
-So I ditched React and Angular, considered Vue, and eventually went with Native ES6 WebComponents
+From a simple SPA page it evolved into a labour of love, especially since I always try to develop by the _'Use only necessary dependencies'_ rule.
+So I ditched React and Angular, considered Vue, and eventually went with Native ES6 WebComponents (Hey! I am in charge now, using ES6, so my Dashboard does not work in crappy old-fashioned browsers )
 
 I hereby give donate her with an MIT License to the Open Source community,
 

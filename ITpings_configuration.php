@@ -6,15 +6,28 @@ include('ITpings_access_database.php');
 // set to FALSE in Production to save lots of database resources, can be used for debugging purposes
 define('SAVE_POST_AS_STRING_TO_A_SINGLE_POSTrequests_TABLE', TRUE);
 
-// shorten the downlink URI going into the database, strip this first string from entry
-define('TTN_DOWNLINKROOT', 'https://integrations.thethingsnetwork.org/ttn-eu/api/v2/down/');
-
 // GPS has inaccurate fixes, to prevent 'moving' Gateway recordings a tolerance for lat/lon is calculated
 // Gateways outside this tolerance will be recorded as new (moved) Gateway
 define('GATEWAY_POSITION_TOLERANCE', '0.02');      // 20 Meter
 
 //default LIMIT when none is specified
 define('SQL_LIMIT_DEFAULT', 10);
+
+// field `downlink_url` is of no use once it can't be used anymore to downlink data to a Node
+// To save database space these fields can be reset to empty values
+// eg. 60 means 60th Ping in the past will be reset to empty values
+define('PURGE_PINGCOUNT', 60);
+
+// MySQL version 5.6.4 with DATETIME(6) is required to save ping.meta_time in Time with milliseconds
+// https://dev.mysql.com/doc/refman/5.6/en/fractional-seconds.html
+// See TYPE_TTN_TIME_DATETIME below
+
+
+// Not quite sure yet how to deal with Altitude
+// ping metadata location info is stored in a separate Table __locations
+// to supress reports for different Altitude for a given lat/lon location set to FALSE
+define('CHECK_HEIGHT_FOR_PING', TRUE);
+
 //endregion == APPLICATION CONFIGURATION ==========================================================
 
 //region ===== DATABASE SCHEMA AND CONFIGURATION ==================================================
@@ -22,8 +35,22 @@ define('SQL_LIMIT_DEFAULT', 10);
 /** ==> Creation of Tables and Views is in the ITpings_connector.php file **/
 
 define('USE_REFERENTIAL_INTEGRITY', TRUE);  // FALSE will NOT create Indexes and Foreign Keys
+define('USE_LOOKUP_TABLES', TRUE);          // Single string entries get their own (Normalized) Lookup Table
+
+// Use abbriated fieldnames, not to waste characters in JSON output
+// eg. latitude = lat
+define('SHORTJSON', TRUE);
+
 
 define('TABLE_PREFIX', 'ITpings__');    // optional double underscore groups table list in PHPMyAdmin
+
+
+define('TABLE_FREQUENCIES', TABLE_PREFIX . 'frequencies');                  // store in own table to save N bytes in pings table
+define('TABLE_MODULATIONS', TABLE_PREFIX . 'modulations');                  // store in own table to save N bytes in pings table
+define('TABLE_DATARATES', TABLE_PREFIX . 'datarates');                      // store in own table to save N bytes in pings table
+define('TABLE_CODINGRATES', TABLE_PREFIX . 'codingrates');                  // store in own table to save N bytes in pings table
+
+define('TABLE_LOCATIONS', TABLE_PREFIX . 'locations');
 
 define('TABLE_EVENTS', TABLE_PREFIX . 'events');
 define('TABLE_POSTREQUESTS', TABLE_PREFIX . 'POSTrequests');
@@ -43,6 +70,11 @@ define('ITPINGS_TABLES', array(
 , TABLE_SENSORS
 , TABLE_PINGEDGATEWAYS
 , TABLE_GATEWAYS
+, TABLE_FREQUENCIES
+, TABLE_MODULATIONS
+, TABLE_DATARATES
+, TABLE_CODINGRATES
+, TABLE_LOCATIONS
 , TABLE_PINGS
 , TABLE_APPLICATIONDEVICES
 , TABLE_DEVICES
@@ -57,10 +89,31 @@ define('PRIMARYKEY_Application', PRIMARYKEY_PREFIX . 'appid');
 define('PRIMARYKEY_Device', PRIMARYKEY_PREFIX . 'devid');
 define('PRIMARYKEY_ApplicationDevice', PRIMARYKEY_PREFIX . 'appdevid');
 define('PRIMARYKEY_Gateway', PRIMARYKEY_PREFIX . 'gtwid');
+define('PRIMARYKEY_Frequency', PRIMARYKEY_PREFIX . 'frqid');
+define('PRIMARYKEY_Modulation', PRIMARYKEY_PREFIX . 'modid');
+define('PRIMARYKEY_Datarate', PRIMARYKEY_PREFIX . 'drid');
+define('PRIMARYKEY_Codingrate', PRIMARYKEY_PREFIX . 'crid');
+define('PRIMARYKEY_Location', PRIMARYKEY_PREFIX . 'locid');
 define('PRIMARYKEY_Ping', PRIMARYKEY_PREFIX . 'pingid');
 define('PRIMARYKEY_Sensor', PRIMARYKEY_PREFIX . 'sensorid');
 
 //region ===== ITPINGS AND (TTN) THE THINGS NETWORK JSON FIELDNAMES ===============================
+
+//region ===== DATE TIME CONVERSIONS ==============================================================
+
+define('CONVERT_DATESTRINGS_TO_DATETIME', TRUE);
+
+define('TYPE_TTN_TIME_STRING', 'VARCHAR(30)');       // "2018-01-25T11:40:43.427237826Z" = 30 characters
+
+// standard DATETIME does not store microseconds, DATETIME(6) does, but is not supported in older MySQL versions
+define('TYPE_TTN_TIME_DATETIME', 'DATETIME');
+define('TYPE_TTN_TIME_COMMENT', 'converted TTN time WITHOUT FRACTION IN OLDER MySQL server!');
+
+define('TYPE_TYPE_TIMESTAMP', 'INT UNSIGNED');      // ?? Timestamp when the gateway received the message
+
+
+//endregion == DATE TIME CONVERSIONS ==============================================================
+
 
 //TTN JSON fieldname definitions, defined in the TTN HTTP integration (Cayenne style)
 define('TTN_app_id', 'app_id');
@@ -107,9 +160,11 @@ define('TTN_Cayenne_luminosity', 'luminosity_6');
 define('TTN_Cayenne_temperature', 'temperature_5');
 
 // Table 'events'
-define('ENUM_EVENTTYPE_NewApp', 'NewApp');
+define('ENUM_EVENTTYPE_New', 'New');
+define('ENUM_EVENTTYPE_NewApp', 'NewApplication');
 define('ENUM_EVENTTYPE_NewDevice', 'NewDevice');
 define('ENUM_EVENTTYPE_NewGateway', 'NewGateway');
+define('ENUM_EVENTTYPE_NewLocation', 'NewLocation');
 define('ENUM_EVENTTYPE_NewSensor', 'NewSensor');
 define('ENUM_EVENTTYPE_NewTable', 'NewTable');
 define('ENUM_EVENTTYPE_NewView', 'NewView');
@@ -121,6 +176,7 @@ define('TYPE_EVENTTYPE', sprintf("ENUM('%s')", implode("','", array(
     ENUM_EVENTTYPE_NewApp
 , ENUM_EVENTTYPE_NewDevice
 , ENUM_EVENTTYPE_NewGateway
+, ENUM_EVENTTYPE_NewLocation
 , ENUM_EVENTTYPE_NewSensor
 , ENUM_EVENTTYPE_NewTable
 , ENUM_EVENTTYPE_NewView
@@ -152,18 +208,31 @@ define('ITPINGS_FREQUENCY', ITPINGS_METADATA_PREFIX . TTN_frequency);
 define('ITPINGS_MODULATION', ITPINGS_METADATA_PREFIX . TTN_modulation);
 define('ITPINGS_DATA_RATE', ITPINGS_METADATA_PREFIX . TTN_data_rate);
 define('ITPINGS_CODING_RATE', ITPINGS_METADATA_PREFIX . TTN_coding_rate);
-define('ITPINGS_LATITUDE', ITPINGS_METADATA_PREFIX . TTN_latitude);
-define('ITPINGS_LONGITUDE', ITPINGS_METADATA_PREFIX . TTN_longitude);
-define('ITPINGS_ALTITUDE', ITPINGS_METADATA_PREFIX . TTN_altitude);
-define('ITPINGS_LOCATIONSOURCE', ITPINGS_METADATA_PREFIX . TTN_location_source);
 
 /**
- * Database Schema standards MATCHING the TTN JSON fieldnames, CHANGE with CARE!
+ * Overrule with shorter fieldnames
  **/
-define('TYPE_TTN_TIMESTRING', 'VARCHAR(30)');       // "2018-01-25T11:40:43.427237826Z" = 30 characters
-define('TYPE_TYPE_TIMESTAMP', 'INT UNSIGNED');      // ?? Timestamp when the gateway received the message
+if (SHORTJSON) {
+    define('ITPINGS_LATITUDE', 'lat');
+    define('ITPINGS_LONGITUDE', 'lon');
+    define('ITPINGS_ALTITUDE', 'alt');
+// Requires ITPINGS declaration for TTN references
+// check where TTN references are used!
+// define('TTN_location_source', 'location_source');
+// define('TTN_location_source', 'src'); // BREAKS!
+} else {
+    define('LOCATION_PREFIX', ITPINGS_METADATA_PREFIX);
+    define('ITPINGS_LATITUDE', LOCATION_PREFIX . TTN_latitude);
+    define('ITPINGS_LONGITUDE', LOCATION_PREFIX . TTN_longitude);
+    define('ITPINGS_ALTITUDE', LOCATION_PREFIX . TTN_altitude);
 
-define('TYPE_TTN_ID_FIELD', 'VARCHAR(1024)');       // ?? what are the TTN maximums?
+}
+
+/**
+ * Database Schema TYPE standards MATCHING the TTN JSON fieldnames, CHANGE with CARE!
+ **/
+
+define('TYPE_TTN_ID_FIELD', 'VARCHAR(512)');       // ?? what are the TTN maximums?
 define('TYPE_TTN_APP_ID', TYPE_TTN_ID_FIELD);
 define('TYPE_TTN_APP_DESCRIPTION', TYPE_TTN_ID_FIELD);
 define('TYPE_TTN_GTW_ID', TYPE_TTN_ID_FIELD);
@@ -176,34 +245,37 @@ define('TYPE_TTN_FRAME_COUNTER', 'INT UNSIGNED');   // Frame Counter
 define('TYPE_TTN_DOWNLINK', 'VARCHAR(1024)');       // ?? save Web URL = 2000
 define('TYPE_TTN_PAYLOAD_RAW', 'VARCHAR(1024)');    // ?? 256 enough?
 
-define('TYPE_TTN_CHANNEL', 'INT UNSIGNED');         // ?? 0 - 7
-define('TYPE_TTN_RSSI', 'INT SIGNED');              // ?? -85 dBm to -45dBm
-//define('TYPE_TTN_SNR', 'DECIMAL');                // ?? 8.25 Decibels ?? DD.dd
-define('TYPE_TTN_SNR', 'TINYINT UNSIGNED');         // ?? 5 - 13
-define('TYPE_TTN_RFCHAIN', 'INT UNSIGNED');         // ?? 0
+define('TYPE_TTN_CHANNEL', 'TINYINT UNSIGNED');     // ?? 0 - 7
+define('TYPE_TTN_RSSI', 'TINYINT SIGNED');          // ?? -85 dBm to -45dBm
+define('TYPE_TTN_SNR', 'DECIMAL(4,2)');             // ?? 8.25 Decibels ?? DD.dd
+define('TYPE_TTN_RFCHAIN', 'TINYINT UNSIGNED');     // ?? 0 or 1
 
 define('TYPE_TTN_HARDWARE_SERIAL', 'VARCHAR(16)');  // LoraWan: Device EUI
 
-define('TYPE_TTN_PORT', 'INT'); // ?? 1
+define('TYPE_TTN_PORT', 'TINYINT UNSIGNED');        // ?? always 1 ??
 
 //https://www.thethingsnetwork.org/wiki/LoRaWAN/Frequencies/Frequency-Plans
-define('TYPE_TTN_FREQUENCY', 'DECIMAL(4,1)');   // ?? 867.1  is DDD,d enough?
-define('TYPE_TTN_MODULATION', 'VARCHAR(16)');   // ?? "LORA" or anything else?
-define('TYPE_TTN_DATA_RATE', 'VARCHAR(9)');     // ?? "SF7BW125" to "SF12BW500"
-define('TYPE_TTN_CODING_RATE', 'VARCHAR(16)');  // ?? "4/5"
+define('TYPE_TTN_FREQUENCY', 'DECIMAL(4,1)');       // ?? 867.1  is DDD,d enough?
+define('TYPE_TTN_MODULATION', 'VARCHAR(16)');       // ?? "LORA" or anything else?
+define('TYPE_TTN_DATA_RATE', 'VARCHAR(9)');         // ?? "SF7BW125" to "SF12BW500"
+define('TYPE_TTN_CODING_RATE', 'VARCHAR(16)');      // ?? "4/5"
 
-define('LATITUDE_ACCURACY', 'DECIMAL(10,8)');   // -90 to 90 with 8 decimals (TTN does 7 decimals)
-define('LONGITUDE_ACCURACY', 'DECIMAL(11,8)');  // -180 to 180 with 8 decimals (TTN does 7 decimals)
-define('ALTITUDE_ACCURACY', 'DECIMAL(5,2)');    // centimeter accuracy up to 999,99
-define('TYPE_LOCATION_SOURCE', 'VARCHAR(16)');  // ?? "registry" what else?
+define('LATITUDE_ACCURACY', 'DECIMAL(10,8)');       // -90 to 90 with 8 decimals (TTN does 7 decimals)
+define('LONGITUDE_ACCURACY', 'DECIMAL(11,8)');      // -180 to 180 with 8 decimals (TTN does 7 decimals)
+define('ALTITUDE_ACCURACY', 'DECIMAL(5,2)');        // centimeter accuracy up to 999,99
+define('TYPE_LOCATION_SOURCE', 'TINYINT UNSIGNED'); // ?? "registry" what else? // hardcoded as 1 in SQL code !!
 
-define('TYPE_PAYLOAD_KEY', 'VARCHAR(256)');
-define('TYPE_PAYLOAD_VALUE', 'VARCHAR(1024)');
+define('TYPE_PAYLOAD_KEY', 'VARCHAR(256)');         // key name in JSON payload
+define('TYPE_PAYLOAD_VALUE', 'VARCHAR(1024)');      // key value in JSON payload
 
 //endregion == ITPINGS AND (TTN) THE THINGS NETWORK JSON FIELDNAMES ===============================
 
-//CONSTANTS, no need to change, results in better readable PHP $sql building code
+
+/** CONSTANTS, no need to change, results in better readable PHP $sql building code **/
+
 define('TYPE_FOREIGNKEY', 'INT UNSIGNED');
+define('TYPE_FOREIGNKEY_LOOKUPTABLE', 'TINYINT UNSIGNED');
+
 define('AUTOINCREMENT_TABLE_PRIMARYKEY', 'NULL');   // default null, database autoincrements key id
 define('NO_FOREIGNKEYS', FALSE);                    // always False to incicate  Table does not have Foreign Keys
 define('NO_PRIMARYKEY', FALSE);                     // always False to indicate a Table does not have a primary key
@@ -213,21 +285,20 @@ define('ITpings_PrimaryKey_In_Table', 'ITpings PrimaryKey in ');
 
 //region ===== VIEW AND QUERY CONFIGURATION =======================================================
 
+//VIEWS
 //names match with create_VIEW_[name] functiondefinitions
-define('VIEWPREFIX', TABLE_PREFIX);
-define('VIEWNAME_EVENTS', VIEWPREFIX . 'Events');
-define('VIEWNAME_APPLICATIONDEVICES', VIEWPREFIX . 'ApplicationDevices');
-define('VIEWNAME_SENSORVALUES', VIEWPREFIX . 'SensorValues');
-define('VIEWNAME_PINGEDGATEWAYS', VIEWPREFIX . 'PingedGateways');
+define('VIEWNAME_EVENTS', TABLE_PREFIX . 'Events');
+define('VIEWNAME_APPLICATIONDEVICES', TABLE_PREFIX . 'ApplicationDevices');
+define('VIEWNAME_SENSORVALUES', TABLE_PREFIX . 'SensorValues');
+define('VIEWNAME_PINGEDGATEWAYS', TABLE_PREFIX . 'PingedGateways');
+
 define('ITPINGS_VIEWNAMES', [
     VIEWNAME_EVENTS
     , VIEWNAME_APPLICATIONDEVICES
     , VIEWNAME_SENSORVALUES
     , VIEWNAME_PINGEDGATEWAYS]);
 
-define('VIEWS_WITH_EXPANDED_KEYS', TRUE); // expand Foreign Keys, JSON will include more information
-
-define('ITPINGS_TABLES_VIEWS', array(ITPINGS_TABLES, ITPINGS_VIEWNAMES));
+define('EXPAND_FOREIGN_KEYS', TRUE); // expand Foreign Keys, JSON will include more information
 
 //QUERY_DEFINITIONS
 /**
@@ -281,6 +352,11 @@ define('VALID_QUERY_PARAMETERS', [
     QUERY_PARAMETER_INTERVALUNIT,
     QUERY_PARAMETER_LIMIT
 ]);
+
+
+//PREDEFINED QUERIES
+define('SQL_QUERY_ApplicationDevices', 'Devices');
+
 
 //endregion == VIEW AND QUERY CONFIGURATION =======================================================
 

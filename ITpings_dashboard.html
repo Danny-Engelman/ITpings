@@ -9,9 +9,6 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.19.1/moment.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.1/Chart.min.js"></script>
-    <script language="JavaScript">
-
-    </script>
     <!--
     https://flatuicolors.com/palette/nl
     -->
@@ -19,11 +16,13 @@
         body {
             font-family: Helvetica Neue, Arial, sans-serif;
             font-size: 12px;
+            margin:0 auto;
         }
 
         table {
             table-layout: fixed;
             width: 100%;
+            border-spacing: 0px;
         }
 
         .table-wrapper TABLE {
@@ -65,6 +64,8 @@
         }
 
         @media (max-width: 1024px) {
+            [data-column$='appid'],
+            [data-column$='appdevid'],
             [data-column$='gtwid'],
             [data-column$='location_source'],
             [data-column='gtw_trusted'] {
@@ -90,7 +91,7 @@
             [data-column='rf_chain'],
             [data-column$='gtwid'],
             [data-column='gtw_trusted'] {
-                width: 6em;
+                width: 2em;
             }
 
         }
@@ -189,9 +190,6 @@
             background-color: lightgreen;
         }
     </style>
-
-    <script language="JavaScript" src="ITpings_dashboard.js"></script>
-
     <style>
         itpings-table TABLE {
         }
@@ -204,6 +202,9 @@
             background: green;
             color: beige;
             font-weight: bolder;
+        }
+        .applicationTitle {
+            font-size: 18px;
         }
     </style>
     <style>
@@ -218,61 +219,58 @@
             display: none;
         }
     </style>
-    <style id="DashboardNodeColors">
-        TD[data-dev_id='ttn_node_365csi_nl_001'] {
-            border-bottom: 3px solid #0082c8;
-        }
-
-        TD[data-dev_id='ttn_node_365csi_nl_002'] {
-            border-bottom: 3px solid #e6194b;
-        }
+    <style title="DynamicDeviceColors">
+        /* This style definition will be filled by JavaScript */
     </style>
+    <!-- run script after CSS declarations, because script references above/existing styles -->
+    <script language="JavaScript" src="ITpings_dashboard.js"></script>
 </head>
 <body>
 <table class="ITpings-dashboard">
     <thead>
     <tr>
-        <th colspan="3">ITpings Dashboard
-            <button id="dropDatabase">Drop Database</button>
-            <button id="createDatabase">Create Database</button>
+        <th colspan="3">
+
+            <div class="applicationTitle">ITpings Dashboard <button id="dropDatabase">Drop Database</button>
+                <button id="createDatabase">Create Database</button></div>
+            <script>
+                let key = 'DANNY1969';
+
+                function doAction(action) {
+                    document.location = './ITpings_connector.php?action=' + action + '&key=' + key
+                }
+
+                document.querySelector('#dropDatabase').addEventListener('click', _ => {
+                    if (confirm('Really??')) doAction('drop');
+                });
+                document.querySelector('#createDatabase').addEventListener('click', _ => {
+                    doAction('create');
+                });
+            </script>
         </th>
     </tr>
-    <script>
-        let key = 'DANNY1969';
-
-        function doAction(action) {
-            document.location = './ITpings_connector.php?action=' + action + '&key=' + key
-        }
-
-        document.querySelector('#dropDatabase').addEventListener('click', _ => {
-            if (confirm('Really??')) doAction('drop');
-        });
-        document.querySelector('#createDatabase').addEventListener('click', _ => {
-            doAction('create');
-        });
-    </script>
     </thead>
     <tbody>
     <tr>
         <td>
-            <itpings-table query="Events" title="ITpings Events"></itpings-table>
             <itpings-table query="applications" title="All Applications"></itpings-table>
+            <itpings-table query="Events" title="ITpings Events"></itpings-table>
+        </td>
+        <td>
             <itpings-table query="Devices" title="All Devices"></itpings-table>
+            <itpings-table query="SensorValues" title="SensorValues"></itpings-table>
         </td>
         <td>
             <itpings-chart chartid="temperature" sensorname="temperature_5" interval="H2"></itpings-chart>
         </td>
-        <td>
-            <itpings-chart chartid="luminosity" sensorname="luminosity_6" interval="H6"></itpings-chart>
-        </td>
     </tr>
     <tr>
-        <td>
-            <itpings-table query="SensorValues" title="SensorValues"></itpings-table>
-        </td>
         <td colspan="2">
             <itpings-table query="PingedGateways" title="Pinged Gateways" maxrowcount="10"></itpings-table>
-            <itpings-table query="gateways" title="All Gateways"></itpings-table>
+            <itpings-table query="Gateways" title="All Gateways"></itpings-table>
+        </td>
+        <td>
+            <itpings-chart chartid="luminosity" sensorname="luminosity_6" interval="H6"></itpings-chart>
         </td>
     </tr>
 

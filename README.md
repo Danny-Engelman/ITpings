@@ -8,6 +8,10 @@ I worked with Macromedia Authorware for 15 years, so I understand the power of G
 
 There is a reason why CLI is the (hyped)term the past years 
 
+For simplicity sake I am not going fancy with NodeJS, socket.io and loads more dependencies 
+
+Focus is on Database and Front-end
+
 # ITpings - '_Just Give Me The Data_'
 
 ITpings can be used by both beginner and advanced developers.

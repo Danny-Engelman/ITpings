@@ -3,8 +3,11 @@ include('ITpings_access_database.php');
 
 //region ===== APPLICATION CONFIGURATION ==========================================================
 
-// IP address:port where Ping came from
-define('PING_ORIGIN', ($_SERVER['HTTP_CLIENT_IP'] ?: ($_SERVER['HTTP_X_FORWARDE‌​D_FOR'] ?: $_SERVER['REMOTE_ADDR'])) . ':' . $_SERVER['REMOTE_PORT']);
+// IP address where Ping came from
+// Let's record for some period and see if it is usefull at all
+// portnumber is different for each call, no need to record
+$ip = ($_SERVER['HTTP_CLIENT_IP'] ?: ($_SERVER['HTTP_X_FORWARDE‌​D_FOR'] ?: $_SERVER['REMOTE_ADDR']));
+define('PING_ORIGIN', $ip);
 
 // CREATE Complete ITpings Database Schema IF it does not exist, set to FALSE to disable the check
 define('CREATE_DATABASE_ON_FIRST_PING', TRUE);
@@ -289,26 +292,27 @@ define('ITpings_PrimaryKey_In_Table', 'ITpings PrimaryKey in ');
 
 //region ===== VIEW AND QUERY CONFIGURATION =======================================================
 
-//VIEWS
-//names match with create_VIEW_[name] functiondefinitions
+// Only views referenced in process_Query_with_QueryString_Parameters() are accessible for the Front-end!!
 define('VIEWNAME_EVENTS', TABLE_PREFIX . 'Events');
 define('VIEWNAME_APPLICATIONDEVICES', TABLE_PREFIX . 'ApplicationDevices');
 define('VIEWNAME_SENSORVALUES', TABLE_PREFIX . 'SensorValues');
 define('VIEWNAME_GATEWAYS', TABLE_PREFIX . 'Gateways');
 define('VIEWNAME_PINGEDGATEWAYS', TABLE_PREFIX . 'PingedGateways');
 
+// Loop all names in front-end query check
+// and Loop all names in DROP VIEW action
 define('ITPINGS_VIEWNAMES', [
     VIEWNAME_EVENTS
     , VIEWNAME_APPLICATIONDEVICES
     , VIEWNAME_SENSORVALUES
+    , VIEWNAME_GATEWAYS
     , VIEWNAME_PINGEDGATEWAYS]);
 
-define('EXPAND_FOREIGN_KEYS', TRUE); // expand Foreign Keys, JSON will include more information
+//endregion == VIEW AND QUERY CONFIGURATION =======================================================
+
 
 //QUERY_DEFINITIONS
-/**
- * Parameters that can be used in GET/URL queries
- **/
+// Parameters that can be used in GET/URL queries
 define('QUERY_PARAMETER_SEPARATOR', ','); // for making IN (a,b,c) queries
 define('QUERY_PARAMETER_FILTER', 'filter');
 define('QUERY_PARAMETER_ORDERBY', 'orderby');
@@ -363,7 +367,6 @@ define('VALID_QUERY_PARAMETERS', [
 define('SQL_QUERY_ApplicationDevices', 'Devices');
 
 
-//endregion == VIEW AND QUERY CONFIGURATION =======================================================
 
 
 //endregion == DATABASE SCHEMA AND CONFIGURATION ==================================================

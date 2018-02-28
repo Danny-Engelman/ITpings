@@ -1,11 +1,43 @@
 !(function (window, document) {
+
+        let __log = (elementName, background, a = '', b = '', c = '', d = '', e = '', f = '', g = '', h = '') => {
+//            console.log(`%cWC:${elementName}:`, 'background:' + background, a, b, c, d, e, f, g, h);
+        };
+
         let __ITpings_SQL_result = 'result';
 
-        let heartbeat_seconds = 0;
+        //with hardcoded Device IDs these always get the same color coding
+        let myDeviceIDs = "ttn_node_365csi_nl_001,ttn_node_365csi_nl_002".split`,`;
 
-        let __YELLOW = '#ffe119';
-        //let backgroundColors = "#e6194b,#3cb44b,#ffe119,#0082c8,#f58231,#911eb4,#46f0f0,#f032e6,#d2f53c,#fabebe,#008080,#e6beff,#aa6e28,#fffac8,#800000,#aaffc3,#808000,#ffd8b1,#000080,#808080".split(",");
-        let backgroundColors = "#e6194b,#0082c8,#f58231,#911eb4,#46f0f0,#f032e6,#d2f53c,#fabebe,#008080,#e6beff,#aa6e28,#fffac8,#800000,#aaffc3,#808000,#ffd8b1,#000080,#808080".split(",");
+        class DeviceColorManager {
+            constructor() {
+                let _dcm = this;
+                let __YELLOW = '#ffe119';
+                _dcm.devices = {};
+                _dcm.colors = "#e6194b,#0082c8,#f58231,#911eb4,#46f0f0,#f032e6,#d2f53c,#fabebe,#008080,#e6beff,#aa6e28,#fffac8,#800000,#aaffc3,#808000,#ffd8b1,#000080,#808080".split(",");
+                _dcm.styles = [...document.styleSheets].filter(x => x.title === 'DynamicDeviceColors')[0];
+            }
+
+            getColor(deviceName) {
+                let _dcm = this;
+                let color;
+                let devices = _dcm.devices;
+                if (devices.hasOwnProperty(deviceName)) {
+                    color = devices[deviceName];
+                } else {
+                    color = _dcm.colors.shift();
+                    devices[deviceName] = color;
+                    let styleRule = "TD[data-dev_id='" + deviceName + "'] {border-bottom: 3px solid " + color + ";}";
+                    _dcm.styles.insertRule(styleRule, 0);
+                }
+                return color;
+            }
+        }
+
+        let DeviceColors = new DeviceColorManager();
+        myDeviceIDs.map(x=>DeviceColors.getColor(x));
+
+        let heartbeat_seconds = 0;
 
         let __strReverse = x => [...x].reverse().join``;
         let __daysSince = x => Math.floor((new Date(x).getTime() - new Date().getTime()) / 864e5);
@@ -40,10 +72,6 @@
         };
 
         let __abbreviated_DeviceID = x => x.split`_`.reverse()[0];
-
-        let __log = (elementName, background, a = '', b = '', c = '', d = '', e = '', f = '', g = '', h = '') => {
-            console.log(`%cWC:${elementName}:`, 'background:' + background, a, b, c, d, e, f, g, h);
-        };
 
         let __ATTR_data_pulse = 'pulse';
         let __ATTR_data_query = 'query';
@@ -237,6 +265,10 @@
                     interval: 30,
                     unit: __STR_MINUTE,
                     xformat: "H:mm"
+                }, "H1": {
+                    interval: 1,
+                    unit: __STR_HOUR,
+                    xformat: "H:mm"
                 }, "H2": {
                     interval: 2,
                     unit: __STR_HOUR,
@@ -303,7 +335,7 @@
                     localStorage.setItem(_wc.chartid + '_interval', newValue);
 
                     //loop all interval DIVs , add or remove Class: selectedInterval
-                    [...this.INTERVALS.children].map(E => E.classList[E == intervalDIV ? 'add' : 'remove']('selectedInterval'));
+                    [...this.INTERVALS.children].map(E => E.classList[E === intervalDIV ? 'add' : 'remove']('selectedInterval'));
 
                     __setAttribute(this, __ATTR_data_interval, newValue);
                     _wc.displayChart(false);
@@ -374,7 +406,7 @@
                                     charttitle = value.sensorname;
                                     if (dataset_index < 0) {                                    // new sensor
                                         dataset_index = chartdata.datasets.length;
-                                        let deviceColor = backgroundColors[dataset_index];
+                                        let deviceColor = DeviceColors.getColor(device_id);
 
                                         chartdata.datasets.push({
                                             label: __abbreviated_DeviceID(device_id)
@@ -393,7 +425,7 @@
                                             y: sensorvalue
                                         });
                                     }
-                                    chartdata.labels.push(x_axis_time);
+                                    if (!chartdata.labels.includes(x_axis_time)) chartdata.labels.push(x_axis_time);
                                     return chartdata;
                                 }
                                 , chartdata);
@@ -478,5 +510,6 @@
         })(); // function (elementName = 'itpings-chart')
 
     }
-)(window, document.currentScript.ownerDocument);
+)
+(window, document.currentScript.ownerDocument);
 

@@ -4,7 +4,6 @@
 // View Pings (use PingedGateways)
 
 // include max ids from other tables in JSON response
-// Pings and Gateways link to (new) Location Table for lat/lon/alt
 // use pings.meta_time instead of created
 
 include('ITpings_configuration.php');
@@ -124,6 +123,13 @@ function Valued($val)
 
 //region ===== CREATE ITPINGS DATABASE : TABLES ===================================================
 /** Create Database Schema with tables:
+ * events
+ * origins
+ * locations
+ * frequencies
+ * modulations
+ * data_rates
+ * coding_rates
  * applications
  * devices
  * gateways
@@ -132,7 +138,6 @@ function Valued($val)
  * sensors
  * sensorvalues
  * POSTrequests
- * events
  **/
 
 function create_ITpings_Tables()
@@ -145,8 +150,10 @@ function create_ITpings_Tables()
     /**
      * @param $table_name
      * @param $primary_key_name - can be False to indicate this table has NO primary key
+     * @param $primary_key_type
      * @param $fields - array of ['fieldname','fieldtype','fieldcomment']
      * @param $foreignkeys - array of ['foreignkeyname','declaration']
+     * @param $comment
      */
     function create_Table($table_name, $primary_key_name, $primary_key_type, $fields, $foreignkeys)
     {
@@ -450,6 +457,12 @@ function create_ITpings_Views()
     }
 
     foreach (ITPINGS_VIEWNAMES as $view_name) {
+        /**
+         * Instructions for creating a new VIEW
+         * - define the VIEW name in ITpings_configuration
+         * - add the VIEW as CASE in 'create_ITpings_Views() function'
+         * - Whitelist the VIEW name in 'process_Query_with_QueryString_Parameters()' function
+        **/
 
         $sql = "CREATE OR REPLACE VIEW $view_name AS SELECT ";
 
@@ -492,7 +505,7 @@ function create_ITpings_Views()
                 $view .= " ,L." . ITPINGS_ALTITUDE;
                 $view .= " ,L." . TTN_location_source;
                 $view .= " FROM " . TABLE_GATEWAYS . " G ";
-                $view .= " JOIN " . TABLE_LOCATIONS . " L ON L." . PRIMARYKEY_Location . " = P." . PRIMARYKEY_Location;
+                $view .= " JOIN " . TABLE_LOCATIONS . " L ON L." . PRIMARYKEY_Location . " = G." . PRIMARYKEY_Location;
                 $view .= " ORDER BY G." . TTN_gtw_id . " DESC";
                 break;
             case VIEWNAME_PINGEDGATEWAYS:
@@ -1118,6 +1131,7 @@ function process_Query_with_QueryString_Parameters()
         case TABLE_SENSORVALUES:
         case VIEWNAME_EVENTS:
         case VIEWNAME_SENSORVALUES:
+        case VIEWNAME_GATEWAYS:
         case VIEWNAME_PINGEDGATEWAYS:
         case VIEWNAME_APPLICATIONDEVICES:
             break;
@@ -1149,7 +1163,7 @@ function process_Query_with_QueryString_Parameters()
                         if (!in_array($interval_unit, QUERY_ALLOWED_INTERVALUNITS)) {
                             $interval_unit = 'HOUR';
                         }
-                        $where .= $and . ITPINGS_CREATED_TIMESTAMP . " > DATE_SUB(NOW(), INTERVAL " . (int)$parameter_value . " " . $interval_unit . ")";
+                        $where .= $and . ITPINGS_CREATED_TIMESTAMP . " >= DATE_SUB(NOW(), INTERVAL " . (int)$parameter_value . " " . $interval_unit . ")";
                         break;
 
                     case QUERY_PARAMETER_INTERVALUNIT:// processed in previous interval case

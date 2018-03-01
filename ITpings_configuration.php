@@ -1,7 +1,7 @@
 <?php
 include('ITpings_access_database.php');
 
-//region ===== APPLICATION CONFIGURATION ==========================================================
+//region ===== APPLICATION DEVELOPMENT ============================================================
 
 // one scrollable TBODY with max-height
 // viz.js
@@ -10,7 +10,7 @@ include('ITpings_access_database.php');
 // include max ids from other tables in JSON response
 // use pings.meta_time instead of created
 
-//endregion == APPLICATION CONFIGURATION ==========================================================
+//endregion == APPLICATION DEVELOPMENT ============================================================
 
 //region ===== APPLICATION CONFIGURATION ==========================================================
 

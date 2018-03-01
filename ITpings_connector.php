@@ -744,7 +744,7 @@ function process_SingleGateway($gateway)
     if ($table_row) {// found a Gateway
         $key_id = $table_row[PRIMARYKEY_Gateway];
         if (!$lat) {
-            insert_TTN_Event(ENUM_EVENTTYPE_Log, "Gateway without location: $request_GateWay_ID", json_encode($gateway));
+            insert_TTN_Event(ENUM_EVENTTYPE_Log, "Gateway without location", json_encode($gateway));
         } else if (is_Location_without_Decimals($lat, $lon)) {
             insert_TTN_Event(ENUM_EVENTTYPE_Log, "Suspicious lat/lon location: $lat / $lon", json_encode($gateway));
         }
@@ -1058,7 +1058,6 @@ function process_Query_with_QueryString_Parameters()
                         break;
 
                     case QUERY_PARAMETER_ORDERBY:
-                        break;
                         if ($PARAMETER_HAS_SEPARATOR) {
                             $orderbyfields = [];
                             //accept only valid fieldnames

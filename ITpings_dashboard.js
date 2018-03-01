@@ -108,6 +108,7 @@
                     let _wc = this;
                     let isTBODY = idx !== _HEADmarker;
                     let TR = (isTBODY ? _wc.TBODY : _wc.THEAD).insertRow(idx);                       // add TR at bottom of THEAD _OR_ bottom/top TBODY
+
                     __Object_keys(row).map(name => {                                                  // add Columns
                         if (!_wc.hiddenfields.has(name)) {
                             let TD = TR.insertCell();
@@ -179,8 +180,10 @@
                                         __appendChild(_wc, _wc.TABLEWRAPPER);                                         // now append that sucker to the DOM
                                     } else if (result.length) {                                           // add rows
                                         // new values read from Database
+                                        // append new TBODY
                                         _wc.TBODY = __insertBefore(_wc.TABLE, __appendChild(_wc.TABLE, __createElement__TBODY()), _wc.TBODY);                    // in a new TBODY at the top of the TABLE
-                                        __classList_add(_wc.TBODY, 'updatedTBODY');
+                                        // animate background color of this newPing
+                                        __classList_add(_wc.TBODY, 'newPing');
                                         result.map(row => _addRowFunc(row, 0));                                // add rows at top of TBODY
                                         _wc.notifyOthers();
                                     }

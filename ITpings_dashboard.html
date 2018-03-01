@@ -12,11 +12,11 @@
     <!--
     https://flatuicolors.com/palette/nl
     -->
-    <style>
+    <style id="Table definitions">
         body {
             font-family: Helvetica Neue, Arial, sans-serif;
             font-size: 12px;
-            margin:0 auto;
+            margin: 0 auto;
         }
 
         table {
@@ -26,13 +26,14 @@
         }
 
         .table-wrapper {
-            max-height: 20em;
-            overflow-x: hidden;
-            overflow-y: auto;
             margin-bottom: 1em;
             border: 1px solid green;
+            max-height: 10em;
+            overflow-x: hidden;
+            overflow-y: auto;
         }
 
+        /* ITpings Table Header */
         thead > tr > td {
             background-color: #42b983;
             color: beige;
@@ -48,6 +49,26 @@
         th, td {
             min-width: 60px;
         }
+    </style>
+    <style id="ITpings-table column definitions">
+
+        .applicationTitle {
+            font-size: 18px;
+        }
+
+        .table-title {
+            background: green;
+            color: beige;
+            font-weight: bolder;
+        }
+
+        .ITpings-dashboard > TBODY > TR > TD {
+            vertical-align: top;
+        }
+
+        [data-column$='pingid'] {
+            width: 4em;
+        }
 
         [data-column='time'],
         [data-column='app_id'],
@@ -55,7 +76,15 @@
             width: 12em;
         }
 
-        [data-column='hardware_serial'] {
+        /* hide table columns */
+        [data-column='description'],
+        [data-column='timestamp'],
+        [data-column='created'],
+        [data-column='payload_raw'],
+        [data-column='downlink_url'],
+        [data-column$='location_source'],
+        [data-column$='src'],
+        [data-column$='serial'] {
             display: none;
         }
 
@@ -63,12 +92,12 @@
             width: 8em;
         }
 
+        /* collapse columns on smaller screen width */
         @media (max-width: 1024px) {
             [data-column$='appid'],
             [data-column$='appdevid'],
             [data-column$='gtwid'],
-            [data-column$='location_source'],
-            [data-column='gtw_trusted'] {
+            [data-column$='trusted'] {
                 width: .1px;
                 background: darkgrey;
             }
@@ -80,23 +109,46 @@
         }
 
         @media (min-width: 1024px) {
-            [data-column$='pingid'],
             [data-column$='appid'],
             [data-column$='devid'],
-            [data-column$='sensorid'],
             [data-column$='appdevid'],
+            [data-column$='sensorid'],
             [data-column='channel'],
             [data-column='rssi'],
             [data-column='snr'],
             [data-column='rf_chain'],
             [data-column$='gtwid'],
-            [data-column='gtw_trusted'] {
-                width: 2em;
+            [data-column$='trusted'] {
+                width: 3em;
             }
 
         }
 
-        TBODY.updatedTBODY .fadeOutCell {
+        /* overrule default max-height*/
+        itpings-table[query='SensorValues'] .table-wrapper {
+            max-height: 50vh;
+        }
+
+        /* Hide Columns */
+        itpings-table[query='SensorValues'] [data-column$='sensorid'],
+        itpings-table[query='SensorValues'] [data-column$='appdevid'],
+        itpings-table[query='SensorValues'] [data-column='app_id'],
+        itpings-table[query='SensorValues'] [data-column='hardware_serial'] {
+            display: none;
+        }
+
+        /* Hide TR rows*/
+        itpings-table[query='SensorValues'] [data-sensorname^='accelerometer'] {
+            display: none;
+        }
+
+    </style>
+    <style id="Color new Pings">
+        itpings-table TBODY:nth-child(odd) {
+            background-color: beige;
+        }
+
+        TBODY.newPing .fadeOutCell {
             animation: fadeOut 60s linear 0s;
         }
 
@@ -111,46 +163,10 @@
             }
         }
 
-        table tbody:nth-child(odd).updatedTBODY {
-            background-color: beige;
-        }
-
         .unseen_warning {
             background: orange;
         }
-    </style>
-    <!--<style id="TABLE_hover_row_and_column" hidden>-->
-    <!--table {-->
-    <!--overflow: hidden;-->
-    <!--}-->
 
-    <!--tr:hover {-->
-    <!--background-color: #ffa;-->
-    <!--}-->
-
-    <!--td, th {-->
-    <!--position: relative;-->
-    <!--}-->
-
-    <!--td:hover::after,-->
-    <!--th:hover::after {-->
-    <!--content: "";-->
-    <!--position: absolute;-->
-    <!--background-color: #ffa;-->
-    <!--left: 0;-->
-    <!--top: -5000px;-->
-    <!--height: 10000px;-->
-    <!--width: 100%;-->
-    <!--z-index: -1;-->
-    <!--}-->
-    <!--</style>-->
-    <style id="hideTableColumnsWithCSS" disabled>
-        [data-column='timestamp'],
-        [data-column='created'],
-        [data-column='payload_raw'],
-        [data-column='downlink_url'] {
-            display: none;
-        }
     </style>
     <style id="itpings-chart">
         itpings-chart {
@@ -190,35 +206,6 @@
             background-color: lightgreen;
         }
     </style>
-    <style>
-        itpings-table TABLE {
-        }
-
-        .ITpings-dashboard > TBODY > TR > TD {
-            vertical-align: top;
-        }
-
-        .table-title {
-            background: green;
-            color: beige;
-            font-weight: bolder;
-        }
-        .applicationTitle {
-            font-size: 18px;
-        }
-    </style>
-    <style>
-        itpings-table[query='SensorValues'] .table-wrapper {
-            max-height: inherit;
-        }
-
-        itpings-table[query='SensorValues'] [data-column='_sensorid'],
-        itpings-table[query='SensorValues'] [data-column='_appdevid'],
-        itpings-table[query='SensorValues'] [data-column='app_id'],
-        itpings-table[query='SensorValues'] [data-column='hardware_serial'] {
-            display: none;
-        }
-    </style>
     <style title="DynamicDeviceColors">
         /* This style definition will be filled by JavaScript */
     </style>
@@ -226,13 +213,16 @@
     <script language="JavaScript" src="ITpings_dashboard.js"></script>
 </head>
 <body>
+<a href="https://github.com/Danny-Engelman/ITpings"><img style="position: absolute; top: 0; right: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_right_orange_ff7600.png" alt="Fork me on GitHub"></a>
 <table class="ITpings-dashboard">
     <thead>
     <tr>
         <th colspan="3">
 
-            <div class="applicationTitle">ITpings Dashboard <button id="dropDatabase">Drop Database</button>
-                <button id="createDatabase">Create Database</button></div>
+            <div class="applicationTitle">ITpings Dashboard
+                <button id="dropDatabase">Drop Database</button>
+                <button id="createDatabase">Create Database</button>
+            </div>
             <script>
                 let key = 'DANNY1969';
 
@@ -254,10 +244,10 @@
     <tr>
         <td>
             <itpings-table query="applications" title="All Applications"></itpings-table>
+            <itpings-table query="Devices" title="All Devices"></itpings-table>
             <itpings-table query="Events" title="ITpings Events"></itpings-table>
         </td>
         <td>
-            <itpings-table query="Devices" title="All Devices"></itpings-table>
             <itpings-table query="SensorValues" title="SensorValues"></itpings-table>
         </td>
         <td>

@@ -1,14 +1,21 @@
 <?php
 /* In a decent IDE, press Ctrl+Shift+Minus to collapse all code blocks */
 
-// View Pings (use PingedGateways)
-
-// include max ids from other tables in JSON response
-// use pings.meta_time instead of created
-
 include('ITpings_configuration.php');
 
 //region ===== HELPER FUNCTIONS ===================================================================
+
+/**
+ * @param $str
+ * @return mixed
+ *
+ * brutal approach against SQL injection attempts
+ * Return first element after split on 'illegal' SQL characters
+ */
+function SQL_InjectionSave_OneWordString($str)
+{
+    return preg_split("/[&=:;]/", $str)[0];
+}
 
 /**
  * returns TRUE when $lat and $lon have no decimals (most likely a fake location)
@@ -31,18 +38,9 @@ if (mysqli_connect_errno()) {
     die("Failed to connect to MySQL: " . mysqli_connect_error());
 }
 
-/**
- * @param $str
- * @return mixed
- *
- * brutal approach against SQL injection attempts
- * Return first element after split on 'illegal' SQL characters
- */
-function SQL_InjectionSave_OneWordString($str)
-{
-    return preg_split("/[&=:;]/", $str)[0];
-}
-
+$JSON_response = array(
+    'mysqlversion' => mysqli_get_server_info($MySQL_DB_Connection)
+);
 /**
  * @param $sql
  * @param bool $returnJSON
@@ -52,6 +50,9 @@ function SQL_InjectionSave_OneWordString($str)
 function SQL_Query($sql, $returnJSON = FALSE)
 {
     global $MySQL_DB_Connection;
+    global $JSON_response;
+
+    $JSON_response['sql'] = str_replace(TABLE_PREFIX, '', $sql);
 
     $result = mysqli_query($MySQL_DB_Connection, $sql);
     if ($result) {
@@ -62,16 +63,14 @@ function SQL_Query($sql, $returnJSON = FALSE)
             }
             // http://nitschinger.at/Handling-JSON-like-a-boss-in-PHP/
             header('Content-type: application/json');
-            print json_encode(array(
-                    'sql' => str_replace(TABLE_PREFIX, '', $sql)
-                , 'mysqlversion' => mysqli_get_server_info($MySQL_DB_Connection)
-                , 'result' => $rows)
-            );
+            $JSON_response['result'] = $rows;
+            print json_encode($JSON_response);
         } else {
             return mysqli_fetch_assoc($result); // return first $row
         }
     } else {
-        die($sql . "<br>Error:" . mysqli_error($MySQL_DB_Connection));
+        $JSON_response += array('error' => mysqli_error($MySQL_DB_Connection));
+        print json_encode($JSON_response);
     }
     return false;
 }
@@ -142,18 +141,12 @@ function Valued($val)
 
 function create_ITpings_Tables()
 {
-    function OnKey($str)
-    {// Make Foreign Key definitions better readable
-        return "(" . $str . ")";
-    }
-
     /**
      * @param $table_name
      * @param $primary_key_name - can be False to indicate this table has NO primary key
      * @param $primary_key_type
      * @param $fields - array of ['fieldname','fieldtype','fieldcomment']
      * @param $foreignkeys - array of ['foreignkeyname','declaration']
-     * @param $comment
      */
     function create_Table($table_name, $primary_key_name, $primary_key_type, $fields, $foreignkeys)
     {
@@ -165,15 +158,14 @@ function create_ITpings_Tables()
             if ($index > 0) $sql .= " , ";
             $sql .= " $field[0] $field[1] COMMENT '$field[2]'";
         }
-        if (USE_REFERENTIAL_INTEGRITY) {
-            foreach ($foreignkeys as $index => $key) {
-                $sql .= " , FOREIGN KEY ($key[0]) $key[1]";
-            }
+        foreach ($foreignkeys as $index => $key) {
+            $sql .= " , FOREIGN KEY ($key[0]) $key[1]";
         }
         if ($primary_key_name) {
             $sql .= " , PRIMARY KEY ($primary_key_name)";
         }
         $sql .= ") ENGINE=InnoDB DEFAULT CHARSET=utf8;";
+        echo $sql . "<br><br>";
         SQL_Query($sql);
 
         insert_TTN_Event(ENUM_EVENTTYPE_NewTable, $table_name, $sql);
@@ -183,25 +175,12 @@ function create_ITpings_Tables()
         , NO_PRIMARYKEY
         , FALSE
         , [//Fields
-            [PRIMARYKEY_Ping
-                , TYPE_FOREIGNKEY
-                , ITpings_PrimaryKey_In_Table . TABLE_PINGS]
-            , [ITPINGS_EVENTTYPE
-                , TYPE_EVENTTYPE . " DEFAULT '" . ENUM_EVENTTYPE_Log . "'"
-                , "Event ENUM_EVENTTYPE values"]
-            , [ITPINGS_EVENTLABEL
-                , TYPE_EVENTLABEL
-                , "Event label"]
-            , [ITPINGS_EVENTVALUE
-                , TYPE_EVENTVALUE
-                , "Event text, can include POST BODY"]
+            DBFIELD_PRIMARYKEY_PING
+            , DBFIELD_EVENTTYPE
+            , DBFIELD_EVENTLABEL
+            , DBFIELD_EVENTVALUE
         ]
-        , NO_FOREIGNKEYS
-    /** No Foreign Key so the Events table can be used for any entry **/
-//            , [
-//                [PRIMARYKEY_Ping
-//                    , IS_A_FOREIGNKEY_IN . TABLE_PINGS . OnKey(PRIMARYKEY_Ping)]
-//            ]
+        , NO_FOREIGNKEYS/** No Foreign Key so the Events table can be used for any entry **/
     );
 
     if (SAVE_POST_AS_ONE_STRING) {
@@ -209,73 +188,37 @@ function create_ITpings_Tables()
             , PRIMARYKEY_POSTrequests
             , TYPE_FOREIGNKEY
             , [//Fields
-                [ITPINGS_POST_body
-                    , TYPE_POST_BODY
-                    , "Bare POST body"]
+                DBFIELD_POST_BODY
             ]
             , NO_FOREIGNKEYS
         );
     }
+
     create_Table(TABLE_APPLICATIONS
         , PRIMARYKEY_Application
         , TYPE_FOREIGNKEY
-        , [//Fields
-            [TTN_app_id
-                , TYPE_TTN_APP_ID
-                , "TTN Application ID"]
-            , [ITPINGS_DESCRIPTION
-                , TYPE_TTN_APP_DESCRIPTION
-                , "Description "]
-        ]
+        , [DBFIELD_APPLICATION_ID
+            , DBFIELD_APPLICATION_DESCRIPTION]
         , NO_FOREIGNKEYS
     );
 
     create_Table(TABLE_DEVICES
         , PRIMARYKEY_Device
         , TYPE_FOREIGNKEY
-        , [//Fields
-            [TTN_dev_id
-                , TYPE_TTN_DEVICE_ID
-                , "TTN Device ID"]
-            , [TTN_hardware_serial
-                , TYPE_TTN_HARDWARE_SERIAL
-                , "TTN Application ID"]
-        ], NO_FOREIGNKEYS
+        , [DBFIELD_DEVICE_ID
+            , DBFIELD_HARDWARE_SERIAL
+        ]
+        , NO_FOREIGNKEYS
     );
 
     create_Table(TABLE_APPLICATIONDEVICES
         , PRIMARYKEY_ApplicationDevice
         , TYPE_FOREIGNKEY
         , [//Fields
-            [PRIMARYKEY_Application
-                , TYPE_FOREIGNKEY
-                , ITpings_PrimaryKey_In_Table . TABLE_APPLICATIONS]
-            , [PRIMARYKEY_Device
-                , TYPE_FOREIGNKEY
-                , ITpings_PrimaryKey_In_Table . TABLE_DEVICES]
+            DBFIELD_PRIMARYKEY_APPLICATION
+            , DBFIELD_PRIMARYKEY_DEVICE
         ]
-        , [
-            [PRIMARYKEY_Application
-                , IS_A_FOREIGNKEY_IN . TABLE_APPLICATIONS . OnKey(PRIMARYKEY_Application)]
-
-            , [PRIMARYKEY_Device
-                , IS_A_FOREIGNKEY_IN . TABLE_DEVICES . OnKey(PRIMARYKEY_Device)]
-        ]
-    );
-
-    create_Table(TABLE_GATEWAYS
-        , PRIMARYKEY_Gateway
-        , TYPE_FOREIGNKEY
-        , [//Fields
-            [TTN_gtw_id
-                , TYPE_TTN_GTW_ID
-                , "TTN Gateway ID"]
-            , [TTN_gtw_trusted
-                , TYPE_TTN_TRUSTED_GTW
-                , "TTN Gateway Trusted"]
-            , [PRIMARYKEY_Location, TYPE_FOREIGNKEY, ITpings_PrimaryKey_In_Table . TABLE_LOCATIONS]
-        ]
-        , NO_FOREIGNKEYS
+        , [FOREIGNKEY_APPLICATIONS, FOREIGNKEY_DEVICES]
     );
 
     function create_LookupTable($table, $primary_key_name, $field_name, $field_datatype)
@@ -288,29 +231,29 @@ function create_ITpings_Tables()
             , NO_FOREIGNKEYS
         );
 
-        // return declaration for pings table
+        // return declaration for Lookup table
         return [
             $primary_key_name
             , TYPE_FOREIGNKEY_LOOKUPTABLE
-            , ITpings_PrimaryKey_In_Table . $table];
+            , PrimaryKey_In . $table];
     }
 
     $frequency_declaration = create_LookupTable(TABLE_FREQUENCIES
         , PRIMARYKEY_Frequency
         , ITPINGS_FREQUENCY
-        , TYPE_TTN_FREQUENCY);
+        , TYPE_FREQUENCY);
     $modulation_declaration = create_LookupTable(TABLE_MODULATIONS
         , PRIMARYKEY_Modulation
         , ITPINGS_MODULATION
-        , TYPE_TTN_MODULATION);
+        , TYPE_MODULATION);
     $datarate_declaration = create_LookupTable(TABLE_DATARATES
         , PRIMARYKEY_Datarate
         , ITPINGS_DATA_RATE
-        , TYPE_TTN_DATA_RATE);
+        , TYPE_DATA_RATE);
     $codingrate_declaration = create_LookupTable(TABLE_CODINGRATES
         , PRIMARYKEY_Codingrate
         , ITPINGS_CODING_RATE
-        , TYPE_TTN_CODING_RATE);
+        , TYPE_CODING_RATE);
     $origin_declaration = create_LookupTable(TABLE_ORIGINS
         , PRIMARYKEY_Origin
         , ITPINGS_ORIGIN
@@ -319,128 +262,85 @@ function create_ITpings_Tables()
     create_Table(TABLE_LOCATIONS
         , PRIMARYKEY_Location
         , TYPE_FOREIGNKEY
-        , [//Fields
-            [ITPINGS_LATITUDE, LATITUDE_ACCURACY, "TTN Ping Latitude"]
-            , [ITPINGS_LONGITUDE, LONGITUDE_ACCURACY, "TTN Ping Longitude"]
-            , [ITPINGS_ALTITUDE, ALTITUDE_ACCURACY, "TTN Ping Altitude"]
-            , [TTN_location_source, TYPE_LOCATION_SOURCE, "TTN (registry)"]
+        , [DBFIELD_LATITUDE
+            , DBFIELD_LONGITUDE
+            , DBFIELD_ALTITUDE
+            , DBFIELD_LOCATION_SOURCE
         ]
         , NO_FOREIGNKEYS
+    );
+
+    create_Table(TABLE_GATEWAYS
+        , PRIMARYKEY_Gateway
+        , TYPE_FOREIGNKEY
+        , [DBFIELD_GATEWAY_ID
+            , DBFIELD_TRUSTED_GATEWAY
+            , DBFIELD_LOCATION
+        ]
+        , [FOREIGNKEY_LOCATIONS]
     );
 
     create_Table(TABLE_PINGS
         , PRIMARYKEY_Ping
         , TYPE_FOREIGNKEY
         , [//Fields
-            [ITPINGS_CREATED_TIMESTAMP
-                , " TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP "
-                , "Time Ping was Created in ITpings database"]
-            , [PRIMARYKEY_ApplicationDevice, TYPE_FOREIGNKEY, ITpings_PrimaryKey_In_Table . TABLE_APPLICATIONDEVICES]
-            , [TTN_port, TYPE_TTN_PORT, "TTN port number"]
-            , [TTN_counter, TYPE_TTN_FRAME_COUNTER, "TTN Frame Counter"]
-            , [TTN_downlink_url, TYPE_TTN_DOWNLINK, "TTN Downlink URI"]
-            , [TTN_payload_raw, TYPE_TTN_PAYLOAD_RAW, "TTN Payload Raw format"]
+            DBFIELD_CREATED_TIMESTAMP
+            , DBFIELD_APPLICATION_DEVICE
 
-            , CONVERT_DATESTRINGS_TO_DATETIME
-                ? [ITPINGS_TIME, TYPE_TTN_TIME_DATETIME, TYPE_TTN_TIME_COMMENT]
-                : [ITPINGS_TIME, TYPE_TTN_TIME_STRING, "TTN time"]
+            , DBFIELD_PORT
+            , DBFIELD_FRAME_COUNTER
+            , DBFIELD_DOWNLINKURL
+            , DBFIELD_PAYLOAD_RAW
+
+            , DBFIELD_ITPINGS_TIME
 
             , $frequency_declaration
             , $modulation_declaration
             , $datarate_declaration
             , $codingrate_declaration
 
-            , [PRIMARYKEY_Location, TYPE_FOREIGNKEY, ITpings_PrimaryKey_In_Table . TABLE_LOCATIONS]
+            , DBFIELD_LOCATION
 
             , $origin_declaration
-
         ]
-        , [
-            [PRIMARYKEY_ApplicationDevice
-                , IS_A_FOREIGNKEY_IN . TABLE_APPLICATIONDEVICES . OnKey(PRIMARYKEY_ApplicationDevice)]
-        ]
+        , [FOREIGNKEY_APPLICATIONDEVICES]
     );
-
-    if (CONVERT_DATESTRINGS_TO_DATETIME) {
-        $gateway_pingtime_declaration = [TTN_time, TYPE_TTN_TIME_DATETIME, TYPE_TTN_TIME_COMMENT];
-    } else {
-        $gateway_pingtime_declaration = [TTN_time, TYPE_TTN_TIME_STRING, "TTN GatewayPing time"];
-    }
 
     create_Table(TABLE_PINGEDGATEWAYS
         , NO_PRIMARYKEY
         , FALSE
         , [//Fields
-            [PRIMARYKEY_Ping
-                , TYPE_FOREIGNKEY
-                , ITpings_PrimaryKey_In_Table . TABLE_PINGS]
-            , [PRIMARYKEY_Gateway
-                , TYPE_FOREIGNKEY
-                , ITpings_PrimaryKey_In_Table . TABLE_GATEWAYS]
-            , [TTN_timestamp
-                , TYPE_PINGED_GATEWAY_TIMESTAMP
-                , "TTN GatewayPing Timestamp"]
-
-            , $gateway_pingtime_declaration
-
-            , [TTN_channel
-                , TYPE_TTN_CHANNEL
-                , "TTN GatewayPing Channel"]
-            , [TTN_rssi
-                , TYPE_TTN_RSSI
-                , "TTN GatewayPing RSSI"]
-            , [TTN_snr
-                , TYPE_TTN_SNR
-                , "TTN GatewayPing SNR"]
-            , [TTN_rf_chain
-                , TYPE_TTN_RFCHAIN
-                , "TTN GatewayPing RFChain"]
+            DBFIELD_PRIMARYKEY_PING
+            , DBFIELD_GATEWAY
+            , DBFIELD_PINGED_GATEWAY_TIMESTAMP
+            , DBFIELD_ITPINGS_TIME
+            , DBFIELD_CHANNEL
+            , DBFIELD_RSSI
+            , DBFIELD_SNR
+            , DBFIELD_RFCHAIN
         ]
-        , [
-            [PRIMARYKEY_Ping
-                , IS_A_FOREIGNKEY_IN . TABLE_PINGS . OnKey(PRIMARYKEY_Ping)]
-            , [PRIMARYKEY_Gateway
-                , IS_A_FOREIGNKEY_IN . TABLE_GATEWAYS . OnKey(PRIMARYKEY_Gateway)]
-        ]
+        , [FOREIGNKEY_PINGS, FOREIGNKEY_GATEWAYS]
     );
 
     create_Table(TABLE_SENSORS
         , PRIMARYKEY_Sensor
         , TYPE_FOREIGNKEY
         , [//Fields
-            [PRIMARYKEY_ApplicationDevice
-                , TYPE_FOREIGNKEY
-                , ITpings_PrimaryKey_In_Table . TABLE_APPLICATIONDEVICES]
-            , [ITPINGS_SENSORNAME
-                , TYPE_PAYLOAD_KEY
-                , "TTN Payload key"]
+            DBFIELD_APPLICATION_DEVICE
+            , DBFIELD_SENSORNAME
         ]
-        , [
-            [PRIMARYKEY_ApplicationDevice
-                , IS_A_FOREIGNKEY_IN . TABLE_APPLICATIONDEVICES . OnKey(PRIMARYKEY_ApplicationDevice)]
-        ]
+        , [FOREIGNKEY_APPLICATIONDEVICES]
     );
 
     create_Table(TABLE_SENSORVALUES
         , NO_PRIMARYKEY
         , FALSE
         , [//Fields
-            [PRIMARYKEY_Ping
-                , TYPE_FOREIGNKEY
-                , ITpings_PrimaryKey_In_Table . TABLE_PINGS]
-            , [PRIMARYKEY_Sensor
-                , TYPE_FOREIGNKEY
-                , ITpings_PrimaryKey_In_Table . TABLE_SENSORS]
-            , [ITPINGS_SENSORVALUE
-                , TYPE_PAYLOAD_VALUE
-                , "TTN Payload value"]
+            DBFIELD_PRIMARYKEY_PING
+            , DBFIELD_PRIMARYKEY_SENSOR
+            , DBFIELD_SENSORVALUE
         ]
-        , [//Foreign Keys
-            [PRIMARYKEY_Ping
-                , IS_A_FOREIGNKEY_IN . TABLE_PINGS . OnKey(PRIMARYKEY_Ping)],
-            [PRIMARYKEY_Sensor
-                , IS_A_FOREIGNKEY_IN . TABLE_SENSORS . OnKey(PRIMARYKEY_Sensor)]
-        ]
+        , [FOREIGNKEY_PINGS, FOREIGNKEY_SENSORS]
     );
 
 }//end function createTables
@@ -462,7 +362,7 @@ function create_ITpings_Views()
          * - define the VIEW name in ITpings_configuration
          * - add the VIEW as CASE in 'create_ITpings_Views() function'
          * - Whitelist the VIEW name in 'process_Query_with_QueryString_Parameters()' function
-        **/
+         **/
 
         $sql = "CREATE OR REPLACE VIEW $view_name AS SELECT ";
 
@@ -478,18 +378,18 @@ function create_ITpings_Views()
                 break;
             case VIEWNAME_APPLICATIONDEVICES:
                 $view .= " AD." . PRIMARYKEY_ApplicationDevice . " ";
-                $view .= " , A." . TTN_app_id . " , A." . ITPINGS_DESCRIPTION;
-                $view .= " , D." . TTN_dev_id . " , D." . TTN_hardware_serial;
+                $view .= " , A." . ITPINGS_APPLICATION_ID . " , A." . ITPINGS_DESCRIPTION;
+                $view .= " , D." . ITPINGS_DEVICE_ID . " , D." . ITPINGS_HARDWARE_SERIAL;
                 $view .= " FROM " . TABLE_APPLICATIONDEVICES . " AD ";
                 $view .= " JOIN " . TABLE_APPLICATIONS . " A ON A." . PRIMARYKEY_Application . " = AD." . PRIMARYKEY_Application;
                 $view .= " JOIN " . TABLE_DEVICES . " D ON D." . PRIMARYKEY_Device . " = AD." . PRIMARYKEY_Device;
-                $view .= " ORDER BY A." . TTN_app_id . " ASC, D." . TTN_dev_id . " ASC";
+                $view .= " ORDER BY A." . ITPINGS_APPLICATION_ID . " ASC, D." . ITPINGS_DEVICE_ID . " ASC";
                 break;
             case VIEWNAME_SENSORVALUES:
                 $view .= " P." . PRIMARYKEY_Ping . " , P." . ITPINGS_CREATED_TIMESTAMP;
                 $view .= " , S." . PRIMARYKEY_Sensor;
-                $view .= " , AD." . PRIMARYKEY_ApplicationDevice . " , AD." . TTN_app_id . " , AD." . TTN_dev_id;
-                //$view .= " , AD." . TTN_hardware_serial;
+                $view .= " , AD." . PRIMARYKEY_ApplicationDevice . " , AD." . ITPINGS_APPLICATION_ID . " , AD." . ITPINGS_DEVICE_ID;
+                //$view .= " , AD." . ITPINGS_HARDWARE_SERIAL;
                 $view .= " , S." . ITPINGS_SENSORNAME;
                 $view .= " , SV." . ITPINGS_SENSORVALUE;
                 $view .= " FROM " . TABLE_SENSORVALUES . " SV ";
@@ -499,25 +399,25 @@ function create_ITpings_Views()
                 $view .= " ORDER BY " . ITPINGS_CREATED_TIMESTAMP . " DESC, SV." . PRIMARYKEY_Sensor;
                 break;
             case VIEWNAME_GATEWAYS:
-                $view .= " G." . PRIMARYKEY_Gateway . " , G." . TTN_gtw_id;
-                $view .= " ,G." . TTN_gtw_trusted;
+                $view .= " G." . PRIMARYKEY_Gateway . " , G." . ITPINGS_GATEWAY_ID;
+                $view .= " ,G." . ITPINGS_TRUSTED;
                 $view .= " ,L." . ITPINGS_LATITUDE . " , L." . ITPINGS_LONGITUDE;
                 $view .= " ,L." . ITPINGS_ALTITUDE;
-                $view .= " ,L." . TTN_location_source;
+                $view .= " ,L." . ITPINGS_LOCATION_SOURCE;
                 $view .= " FROM " . TABLE_GATEWAYS . " G ";
                 $view .= " JOIN " . TABLE_LOCATIONS . " L ON L." . PRIMARYKEY_Location . " = G." . PRIMARYKEY_Location;
-                $view .= " ORDER BY G." . TTN_gtw_id . " DESC";
+                $view .= " ORDER BY G." . ITPINGS_GATEWAY_ID . " DESC";
                 break;
             case VIEWNAME_PINGEDGATEWAYS:
                 $view .= " P." . PRIMARYKEY_Ping . ",P." . ITPINGS_CREATED_TIMESTAMP;
-                $view .= " ,PG." . TTN_timestamp . ",PG." . TTN_time;
-                $view .= " , F." . TTN_frequency;
-                $view .= " , M." . TTN_modulation;
-                $view .= " ,DR." . TTN_data_rate;
-                $view .= " ,CR." . TTN_coding_rate;
-                $view .= " ,PG." . TTN_channel . ", PG." . TTN_rssi . ", PG." . TTN_snr . ", PG." . TTN_rf_chain;
-                $view .= " ,G." . PRIMARYKEY_Gateway . " , G." . TTN_gtw_id;
-                $view .= " ,G." . TTN_gtw_trusted;
+                $view .= " ,PG." . ITPINGS_TIMESTAMP . ",PG." . ITPINGS_TIME;
+                $view .= " , F." . ITPINGS_FREQUENCY;
+                $view .= " , M." . ITPINGS_MODULATION;
+                $view .= " ,DR." . ITPINGS_DATA_RATE;
+                $view .= " ,CR." . ITPINGS_CODING_RATE;
+                $view .= " ,PG." . ITPINGS_CHANNEL . ", PG." . ITPINGS_RSSI . ", PG." . ITPINGS_SNR . ", PG." . ITPINGS_RFCHAIN;
+                $view .= " ,G." . PRIMARYKEY_Gateway . " , G." . ITPINGS_GATEWAY_ID;
+                $view .= " ,G." . ITPINGS_TRUSTED;
                 $view .= " ,L." . ITPINGS_LATITUDE . " , L." . ITPINGS_LONGITUDE;
                 $view .= " ,L." . ITPINGS_ALTITUDE;
                 //$view .= " ,G." . ITPINGS_LOCATIONSOURCE;
@@ -637,26 +537,26 @@ function process_Lookup($table, $primarykey, $lookup_field, $lookup_value)
 function process_Application()
 {
     global $request;
-    $request_TTN_app_id = $request[TTN_app_id];
+    $request_Application_ID = $request[TTN_app_id];
 
     $key_id = SQL_find_existing_key_id(
         PRIMARYKEY_Application
         , TABLE_APPLICATIONS
-        , TTN_app_id . "=" . Quoted($request_TTN_app_id)
+        , ITPINGS_APPLICATION_ID . "=" . Quoted($request_Application_ID)
 
     );
 
     if (!$key_id) {
         insert_TTN_Event(
             ENUM_EVENTTYPE_NewApp
-            , $request_TTN_app_id
+            , $request_Application_ID
         );
 
         $key_id = SQL_INSERT(
             TABLE_APPLICATIONS
             , [//values
             AUTOINCREMENT_TABLE_PRIMARYKEY
-            , Quoted($request_TTN_app_id)
+            , Quoted($request_Application_ID)
             , Quoted('Get description from TTN')
         ]);
     }
@@ -671,25 +571,25 @@ function process_Application()
 function process_Device()
 {
     global $request;
-    $request_TTN_dev_id = $request[TTN_dev_id];
+    $request_Device_ID = $request[TTN_dev_id];
 
     $key_id = SQL_find_existing_key_id(
         PRIMARYKEY_Device
         , TABLE_DEVICES
-        , TTN_dev_id . "=" . Quoted($request_TTN_dev_id)
+        , ITPINGS_DEVICE_ID . "=" . Quoted($request_Device_ID)
     );
 
     if (!$key_id) {
         insert_TTN_Event(
             ENUM_EVENTTYPE_NewDevice
-            , $request_TTN_dev_id
+            , $request_Device_ID
         );
 
         $key_id = SQL_INSERT(
             TABLE_DEVICES
             , [//values
             AUTOINCREMENT_TABLE_PRIMARYKEY
-            , Quoted($request_TTN_dev_id)
+            , Quoted($request_Device_ID)
             , Quoted($request[TTN_hardware_serial])
         ]);
     }
@@ -800,7 +700,7 @@ function process_SingleGateway($gateway)
     // GPS has inaccurate fixes,
     // to prevent 'moving' Gateway recordings a tolerance for lat/lon is calculated
 
-    $request_TTN_gtw_id = $gateway[TTN_gtw_id];
+    $request_GateWay_ID = $gateway[TTN_gtw_id];
     $lat = $gateway[TTN_latitude];
     $lon = $gateway[TTN_longitude];
     $alt = $gateway[TTN_altitude];
@@ -829,7 +729,7 @@ function process_SingleGateway($gateway)
             $sql .= "*sin(radians(" . ITPINGS_LATITUDE . ")))) AS distance";
         }
 
-        $sql .= " FROM " . VIEWNAME_PINGEDGATEWAYS . " WHERE " . TTN_gtw_id . "=" . Quoted($gtwid);
+        $sql .= " FROM " . VIEWNAME_PINGEDGATEWAYS . " WHERE " . ITPINGS_GATEWAY_ID . "=" . Quoted($gtwid);
         if ($latitude) { // GPS has inaccurate fixes, to prevent 'moving' Gateway recordings a tolerance for lat/lon is calculated
             $sql .= " HAVING distance < " . GATEWAY_POSITION_TOLERANCE . " ORDER BY distance;";
         } else {
@@ -839,24 +739,24 @@ function process_SingleGateway($gateway)
         return SQL_Query($sql);
     }
 
-    $table_row = find_Nearest_Gateway_With_Same_ID($request_TTN_gtw_id, $lat, $lon);
+    $table_row = find_Nearest_Gateway_With_Same_ID($request_GateWay_ID, $lat, $lon);
 
     if ($table_row) {// found a Gateway
         $key_id = $table_row[PRIMARYKEY_Gateway];
         if (!$lat) {
-            insert_TTN_Event(ENUM_EVENTTYPE_Log, "Gateway without location: $request_TTN_gtw_id", json_encode($gateway));
+            insert_TTN_Event(ENUM_EVENTTYPE_Log, "Gateway without location: $request_GateWay_ID", json_encode($gateway));
         } else if (is_Location_without_Decimals($lat, $lon)) {
             insert_TTN_Event(ENUM_EVENTTYPE_Log, "Suspicious lat/lon location: $lat / $lon", json_encode($gateway));
         }
     } else {
         //record a New Gateway
-        insert_TTN_Event(ENUM_EVENTTYPE_NewGateway, $request_TTN_gtw_id, json_encode($gateway));
+        insert_TTN_Event(ENUM_EVENTTYPE_NewGateway, $request_GateWay_ID, json_encode($gateway));
 
         $key_id = SQL_INSERT(
             TABLE_GATEWAYS
             , [//values
             AUTOINCREMENT_TABLE_PRIMARYKEY
-            , Quoted($request_TTN_gtw_id)
+            , Quoted($request_GateWay_ID)
             , Quoted($gateway[TTN_gtw_trusted])
             , process_Ping_and_Gateway_Location($lat, $lon, $alt, $gateway[TTN_location_source])
         ]);
@@ -875,9 +775,9 @@ function process_AllGateways()
 {
     global $request;
     $processedGateways_InRequest = array();
-    $request_TTN_Gateways = $request[TTN_metadata][TTN_gateways];
+    $request_Gateways = $request[TTN_metadata][TTN_gateways];
 
-    foreach ($request_TTN_Gateways as $gateway) {
+    foreach ($request_Gateways as $gateway) {
 
         $gatewayID = process_SingleGateway($gateway); // Find known Gateway, else save new Gateway
 
@@ -885,7 +785,7 @@ function process_AllGateways()
             insert_TTN_Event(
                 ENUM_EVENTTYPE_Error
                 , "Duplicate TTN Gateway" . $gatewayID
-                , json_encode($request_TTN_Gateways)
+                , json_encode($request_Gateways)
             );
         } else {
             array_push($processedGateways_InRequest, $gatewayID);
@@ -912,18 +812,13 @@ function process_AllGateways()
  */
 function purge_expired_Ping_data($latest_ping_id)
 {
+    // Timestamp is an integer field, so reset to 0 does not save any bytes
+
     if ($latest_ping_id > PURGE_PINGCOUNT) {
         $sql = "UPDATE " . TABLE_PINGS . " SET ";
-        $sql .= TTN_downlink_url . "=''";
-        $sql .= COMMA . TTN_payload_raw . "=''";
+        $sql .= ITPINGS_DOWNLINKURL . "='' , " . ITPINGS_PAYLOAD_RAW . "=''";
         $sql .= " WHERE " . PRIMARYKEY_Ping . "=" . ($latest_ping_id - PURGE_PINGCOUNT);
         SQL_Query($sql);
-
-        // Timestamp is an integer field, so reset to 0 does not save any bytes
-        //        $sql = "UPDATE " . TABLE_PINGEDGATEWAYS. " SET ";
-        //        $sql .= TTN_timestamp . "=''";
-        //        $sql .= " WHERE " . PRIMARYKEY_Ping . "=" . ($latest_ping_id - PURGE_PINGCOUNT);
-        //        SQL_Query($sql);
     }
 }
 
@@ -936,24 +831,17 @@ function post_process_Ping()
 
     $sql = "UPDATE " . TABLE_PINGS . " SET ";
     $sql .= PRIMARYKEY_ApplicationDevice . "=" . Valued($request[PRIMARYKEY_ApplicationDevice]);
-    $sql .= COMMA . TTN_port . "=" . Valued($request[TTN_port]);
-    $sql .= COMMA . TTN_counter . "=" . Valued($request[TTN_counter]);
+    $sql .= COMMA . ITPINGS_PORT . "=" . Valued($request[TTN_port]);
+    $sql .= COMMA . ITPINGS_FRAME_COUNTER . "=" . Valued($request[TTN_counter]);
 
     // To save database space these fields will be reset to empty values by the purge_expired_Ping_data() function
-    $sql .= COMMA . TTN_downlink_url . "=" . Quoted($request[TTN_downlink_url]);
-    $sql .= COMMA . TTN_payload_raw . "=" . Quoted($request[TTN_payload_raw]);
+    $sql .= COMMA . ITPINGS_DOWNLINKURL . "=" . Quoted($request[TTN_downlink_url]);
+    $sql .= COMMA . ITPINGS_PAYLOAD_RAW . "=" . Quoted($request[TTN_payload_raw]);
 
 
     $metadata = $request[TTN_metadata];
 
-    //SELECT STR_TO_DATE('20180218T140347.54413663Z','%Y%m%dT%H%i%s') FROM ITpings__pings
-    $sql .= COMMA . ITPINGS_TIME . "=";
-    if (CONVERT_DATESTRINGS_TO_DATETIME) {
-        //$sql .= "STR_TO_DATE('" . $metadata[TTN_time] . "','%Y-%m-%dT%TZ')";
-        $sql .= Quoted($metadata[TTN_time]);               //  str_replace(array('-',':','/'),)
-    } else {
-        $sql .= Quoted($metadata[TTN_time]);               //  str_replace(array('-',':','/'),)
-    }
+    $sql .= COMMA . ITPINGS_TIME . "=" . Quoted($metadata[TTN_time]);
 
     $sql .= process_Lookup(
         TABLE_FREQUENCIES, PRIMARYKEY_Frequency
@@ -1064,10 +952,10 @@ function process_Predefined_Query()
     switch ($urlVars['query']) {
         case SQL_QUERY_ApplicationDevices: // query=Devices
             $sql = "SELECT AD." . PRIMARYKEY_ApplicationDevice;
-            $sql .= " ,AD." . TTN_app_id;
+            $sql .= " ,AD." . ITPINGS_APPLICATION_ID;
             $sql .= " ,AD." . ITPINGS_DESCRIPTION;
-            $sql .= " ,AD." . TTN_dev_id;
-            $sql .= " ,AD." . TTN_hardware_serial;
+            $sql .= " ,AD." . ITPINGS_DEVICE_ID;
+            $sql .= " ,AD." . ITPINGS_HARDWARE_SERIAL;
             $sql .= " ,LSV.FirstSeen, LSV.LastSeen";
             $sql .= " FROM " . VIEWNAME_APPLICATIONDEVICES . " AD";
             $sql .= " INNER JOIN(";
@@ -1170,16 +1058,23 @@ function process_Query_with_QueryString_Parameters()
                         break;
 
                     case QUERY_PARAMETER_ORDERBY:
+                        break;
                         if ($PARAMETER_HAS_SEPARATOR) {
                             $orderbyfields = [];
                             //accept only valid fieldnames
-                            foreach (explode(QUERY_PARAMETER_SEPARATOR, $parameter_value) as $fieldname) {
-                                if (in_array($fieldname, VALID_QUERY_PARAMETERS)) $orderbyfields[] .= $fieldname;
+                            foreach (explode(QUERY_PARAMETER_SEPARATOR, $parameter_value) as $field) {
+                                $field = explode(' ', $field);
+                                $fieldname = $field[0];
+                                $fieldsort = $field[1];
+                                if (!$fieldsort) $fieldsort = 'ASC';
+                                if (in_array($fieldname, VALID_QUERY_PARAMETERS)) {
+                                    $orderbyfields[] .= $fieldname . ' ' . $fieldsort;
+                                } else {
+                                }
                             }
                             $parameter_value = implode(QUERY_PARAMETER_SEPARATOR, $orderbyfields);
                         }
-                        $order_sort = $urlVars[QUERY_PARAMETER_ORDERSORT] === "DESC" ? "DESC" : "ASC";
-                        $order .= " ORDER BY " . $parameter_value . " " . $order_sort;
+                        $order .= " ORDER BY " . $parameter_value;
                         break;
 
                     case QUERY_PARAMETER_LIMIT:

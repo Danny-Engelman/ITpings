@@ -4,18 +4,20 @@
 //            console.log(`%cWC:${elementName}:`, 'background:' + background, a, b, c, d, e, f, g, h);
         };
 
+        let heartbeat_seconds = 1000;
+
         let __ITpings_SQL_result = 'result';
 
         //with hardcoded Device IDs these always get the same color coding
         let myDeviceIDs = "ttn_node_365csi_nl_001,ttn_node_365csi_nl_002".split`,`;
 
-        class DeviceColorManager {
-            constructor() {
+        class StyleSheetManager {
+            constructor(style_title) {
                 let _dcm = this;
                 let __YELLOW = '#ffe119';
                 _dcm.devices = {};
                 _dcm.colors = "#e6194b,#0082c8,#f58231,#911eb4,#46f0f0,#f032e6,#d2f53c,#fabebe,#008080,#e6beff,#aa6e28,#fffac8,#800000,#aaffc3,#808000,#ffd8b1,#000080,#808080".split(",");
-                _dcm.styles = [...document.styleSheets].filter(x => x.title === 'DynamicDeviceColors')[0];
+                _dcm.styles = [...document.styleSheets].filter(x => x.title === style_title)[0];
             }
 
             getColor(deviceName) {
@@ -34,10 +36,8 @@
             }
         }
 
-        let DeviceColors = new DeviceColorManager();
-        myDeviceIDs.map(x=>DeviceColors.getColor(x));
-
-        let heartbeat_seconds = 0;
+        let DeviceColors = new StyleSheetManager('DynamicDeviceColors');
+        myDeviceIDs.map(x => DeviceColors.getColor(x));
 
         let __strReverse = x => [...x].reverse().join``;
         let __daysSince = x => Math.floor((new Date(x).getTime() - new Date().getTime()) / 864e5);

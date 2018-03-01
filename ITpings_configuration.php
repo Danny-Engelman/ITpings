@@ -47,7 +47,11 @@ define('PURGE_PINGCOUNT', 60);
 // Not quite sure yet how to deal with Altitude
 // ping metadata location info is stored in a separate Table __locations
 // to supress reports for different Altitude for a given lat/lon location set to FALSE
-define('CHECK_HEIGHT_FOR_PING', TRUE);
+define('CHECK_ALTITUDE_IN_PING', TRUE);
+
+
+// NOTE: PHP 5 requires Scalar variables in DEFINE statements, PHP7 accepts arrays
+// so $_ global variables can becomen proper defines in PHP 7
 
 //endregion == APPLICATION CONFIGURATION ==========================================================
 
@@ -82,7 +86,7 @@ define('TABLE_SENSORS', TABLE_PREFIX . 'sensors');
 define('TABLE_SENSORVALUES', TABLE_PREFIX . 'sensorvalues');
 
 // All Tables, order complies with referential integrity, so DROP TABLE is executed in correct order
-define('ITPINGS_TABLES', array(
+$_ITPINGS_TABLES = array(
     TABLE_ORIGINS
 , TABLE_EVENTS
 , TABLE_SENSORVALUES
@@ -99,7 +103,7 @@ define('ITPINGS_TABLES', array(
 , TABLE_DEVICES
 , TABLE_APPLICATIONS
 , TABLE_POSTREQUESTS
-));
+);
 
 
 /**
@@ -119,21 +123,21 @@ define('PRIMARYKEY_PREFIX', '_');
 //for debugging; single table to record whole POST as TEXT blob
 define('PRIMARYKEY_POSTrequests', PRIMARYKEY_PREFIX . 'postid');
 define('ITPINGS_POST_body', 'body');
-define('DBFIELD_POST_BODY', [ITPINGS_POST_body, 'VARCHAR(4048)', 'Bare POST body']);
+$_DBFIELD_POST_BODY = [ITPINGS_POST_body, 'VARCHAR(4048)', 'Bare POST body'];
 
 define('PRIMARYKEY_Origin', PRIMARYKEY_PREFIX . 'originid');
 
 define('PRIMARYKEY_Application', PRIMARYKEY_PREFIX . 'appid');
-define('DBFIELD_PRIMARYKEY_APPLICATION', [PRIMARYKEY_Application, TYPE_FOREIGNKEY, 'PrimaryKey:' . TABLE_APPLICATIONS]);
+$_DBFIELD_PRIMARYKEY_APPLICATION = [PRIMARYKEY_Application, TYPE_FOREIGNKEY, 'PrimaryKey:' . TABLE_APPLICATIONS];
 
 define('PRIMARYKEY_Device', PRIMARYKEY_PREFIX . 'devid');
-define('DBFIELD_PRIMARYKEY_DEVICE', [PRIMARYKEY_Device, TYPE_FOREIGNKEY, 'PrimaryKey:' . TABLE_DEVICES]);
+$_DBFIELD_PRIMARYKEY_DEVICE = [PRIMARYKEY_Device, TYPE_FOREIGNKEY, 'PrimaryKey:' . TABLE_DEVICES];
 
 define('PRIMARYKEY_ApplicationDevice', PRIMARYKEY_PREFIX . 'appdevid');
-define('DBFIELD_APPLICATION_DEVICE', [PRIMARYKEY_ApplicationDevice, TYPE_FOREIGNKEY, 'PrimaryKey:' . TABLE_APPLICATIONDEVICES]);
+$_DBFIELD_APPLICATION_DEVICE = [PRIMARYKEY_ApplicationDevice, TYPE_FOREIGNKEY, 'PrimaryKey:' . TABLE_APPLICATIONDEVICES];
 
 define('PRIMARYKEY_Gateway', PRIMARYKEY_PREFIX . 'gtwid');
-define('DBFIELD_GATEWAY', [PRIMARYKEY_Gateway, TYPE_FOREIGNKEY, 'PrimaryKey:' . TABLE_GATEWAYS]);
+$_DBFIELD_GATEWAY = [PRIMARYKEY_Gateway, TYPE_FOREIGNKEY, 'PrimaryKey:' . TABLE_GATEWAYS];
 
 define('PRIMARYKEY_Frequency', PRIMARYKEY_PREFIX . 'frqid');
 
@@ -144,13 +148,13 @@ define('PRIMARYKEY_Datarate', PRIMARYKEY_PREFIX . 'drid');
 define('PRIMARYKEY_Codingrate', PRIMARYKEY_PREFIX . 'crid');
 
 define('PRIMARYKEY_Location', PRIMARYKEY_PREFIX . 'locid');
-define('DBFIELD_LOCATION', [PRIMARYKEY_Location, TYPE_FOREIGNKEY, 'PrimaryKey:' . TABLE_LOCATIONS]);
+$_DBFIELD_LOCATION = [PRIMARYKEY_Location, TYPE_FOREIGNKEY, 'PrimaryKey:' . TABLE_LOCATIONS];
 
 define('PRIMARYKEY_Ping', PRIMARYKEY_PREFIX . 'pingid');
-define('DBFIELD_PRIMARYKEY_PING', [PRIMARYKEY_Ping, TYPE_FOREIGNKEY, 'PrimaryKey:' . TABLE_PINGS]);
+$_DBFIELD_PRIMARYKEY_PING = [PRIMARYKEY_Ping, TYPE_FOREIGNKEY, 'PrimaryKey:' . TABLE_PINGS];
 
 define('PRIMARYKEY_Sensor', PRIMARYKEY_PREFIX . 'sensorid');
-define('DBFIELD_PRIMARYKEY_SENSOR', [PRIMARYKEY_Sensor, TYPE_FOREIGNKEY, 'PrimaryKey:' . TABLE_SENSORS]);
+$_DBFIELD_PRIMARYKEY_SENSOR = [PRIMARYKEY_Sensor, TYPE_FOREIGNKEY, 'PrimaryKey:' . TABLE_SENSORS];
 
 //region ===== ITPINGS AND (TTN) THE THINGS NETWORK JSON FIELDNAMES ===============================
 
@@ -166,86 +170,86 @@ define('TTN_Cayenne_temperature', 'temperature_5');
 
 define('TTN_app_id', 'app_id');
 define('ITPINGS_APPLICATION_ID', TTN_app_id);
-define('DBFIELD_APPLICATION_ID', [ITPINGS_APPLICATION_ID, TYPE_VARCHAR_ID_FIELD, "TTN Application ID (name)"]);
+$_DBFIELD_APPLICATION_ID = [ITPINGS_APPLICATION_ID, TYPE_VARCHAR_ID_FIELD, "TTN Application ID (name)"];
 
-define('DBFIELD_APPLICATION_DESCRIPTION', ['description', TYPE_VARCHAR_ID_FIELD, "todo: try and match with TTN database"]);
+$_DBFIELD_APPLICATION_DESCRIPTION = ['description', TYPE_VARCHAR_ID_FIELD, "todo: try and match with TTN database"];
 
 define('TTN_dev_id', 'dev_id');
 define('ITPINGS_DEVICE_ID', TTN_dev_id);
-define('DBFIELD_DEVICE_ID', [ITPINGS_DEVICE_ID, TYPE_VARCHAR_ID_FIELD, "TTN Device ID (name)"]);
+$_DBFIELD_DEVICE_ID = [ITPINGS_DEVICE_ID, TYPE_VARCHAR_ID_FIELD, "TTN Device ID (name)"];
 
 define('TTN_gtw_id', 'gtw_id');
 define('ITPINGS_GATEWAY_ID', TTN_gtw_id);
-define('DBFIELD_GATEWAY_ID', [ITPINGS_GATEWAY_ID, TYPE_VARCHAR_ID_FIELD, 'TTN Gateway ID (name)']);
+$_DBFIELD_GATEWAY_ID = [ITPINGS_GATEWAY_ID, TYPE_VARCHAR_ID_FIELD, 'TTN Gateway ID (name)'];
 
 define('TTN_hardware_serial', 'hardware_serial');
 define('ITPINGS_HARDWARE_SERIAL', 'serial');
-define('DBFIELD_HARDWARE_SERIAL', [ITPINGS_HARDWARE_SERIAL, 'VARCHAR(16)', 'TTN Hardware Serial']);
+$_DBFIELD_HARDWARE_SERIAL = [ITPINGS_HARDWARE_SERIAL, 'VARCHAR(16)', 'TTN Hardware Serial'];
 
 define('TTN_latitude', 'latitude');
 define('ITPINGS_LATITUDE', 'lat');                  // used in ITpings Tables and JSON output
-define('DBFIELD_LATITUDE', [ITPINGS_LATITUDE, 'DECIMAL(10,8)', 'TTN Ping Latitude']);       // -90 to 90 with 8 decimals (TTN does 7 decimals)
+$_DBFIELD_LATITUDE = [ITPINGS_LATITUDE, 'DECIMAL(10,8)', 'TTN Ping Latitude'];       // -90 to 90 with 8 decimals (TTN does 7 decimals)
 
 define('TTN_longitude', 'longitude');
 define('ITPINGS_LONGITUDE', 'lon');
-define('DBFIELD_LONGITUDE', [ITPINGS_LONGITUDE, 'DECIMAL(11,8)', 'TTN Ping Longitude']);      // -180 to 180 with 8 decimals (TTN does 7 decimals)
+$_DBFIELD_LONGITUDE = [ITPINGS_LONGITUDE, 'DECIMAL(11,8)', 'TTN Ping Longitude'];      // -180 to 180 with 8 decimals (TTN does 7 decimals)
 
 define('TTN_altitude', 'altitude');
 define('ITPINGS_ALTITUDE', 'alt');
-define('DBFIELD_ALTITUDE', [ITPINGS_ALTITUDE, 'DECIMAL(5,2)', 'TTN Ping Altitude']);        // centimeter accuracy up to 999,99
+$_DBFIELD_ALTITUDE = [ITPINGS_ALTITUDE, 'DECIMAL(5,2)', 'TTN Ping Altitude'];        // centimeter accuracy up to 999,99
 
 define('TTN_gtw_trusted', 'gtw_trusted');
 define('ITPINGS_TRUSTED', 'trusted');
-define('DBFIELD_TRUSTED_GATEWAY', [ITPINGS_TRUSTED, 'TINYINT UNSIGNED NOT NULL DEFAULT 0', 'TTN Gateway Trusted']); // boolean
+$_DBFIELD_TRUSTED_GATEWAY = [ITPINGS_TRUSTED, 'TINYINT UNSIGNED NOT NULL DEFAULT 0', 'TTN Gateway Trusted']; // boolean
 
 define('TTN_location_source', 'location_source');
 define('ITPINGS_LOCATION_SOURCE', 'src');
-define('DBFIELD_LOCATION_SOURCE', [ITPINGS_LOCATION_SOURCE, 'TINYINT UNSIGNED', 'always registry?']); // ?? "registry" what else? // hardcoded as 1 in SQL code !!
+$_DBFIELD_LOCATION_SOURCE = [ITPINGS_LOCATION_SOURCE, 'TINYINT UNSIGNED', 'always registry?']; // ?? "registry" what else? // hardcoded as 1 in SQL code !!
 
 define('TTN_timestamp', 'timestamp');
 define('ITPINGS_TIMESTAMP', 'timestamp');
-define('DBFIELD_PINGED_GATEWAY_TIMESTAMP', [ITPINGS_TIMESTAMP, 'INT UNSIGNED', 'TTN GatewayPing Timestamp']);      // ?? Timestamp when the gateway received the message
+$_DBFIELD_PINGED_GATEWAY_TIMESTAMP = [ITPINGS_TIMESTAMP, 'INT UNSIGNED', 'TTN GatewayPing Timestamp'];      // ?? Timestamp when the gateway received the message
 
 define('TTN_time', 'time');
 define('ITPINGS_TIME', TTN_time);
 
 // standard DATETIME does not store microseconds, DATETIME(6) does, but is not supported in pre MySQL 5.6 versions
 define('TYPE_TIME_COMMENT', 'converted TTN time WITHOUT FRACTION IN OLDER MySQL server!');
-define('DBFIELD_ITPINGS_TIME', [ITPINGS_TIME, 'DATETIME', TYPE_TIME_COMMENT]);
+$_DBFIELD_ITPINGS_TIME = [ITPINGS_TIME, 'DATETIME', TYPE_TIME_COMMENT];
 //define('TYPE_ITPINGS_TIME', 'VARCHAR(30)');       // "2018-01-25T11:40:43.427237826Z" = 30 characters
 
 
 define('TTN_channel', 'channel');
 define('ITPINGS_CHANNEL', 'channel');
-define('DBFIELD_CHANNEL', [ITPINGS_CHANNEL, 'TINYINT UNSIGNED', 'TTN GatewayPing Channel']);       // ?? 0 - 7
+$_DBFIELD_CHANNEL = [ITPINGS_CHANNEL, 'TINYINT UNSIGNED', 'TTN GatewayPing Channel'];       // ?? 0 - 7
 
 define('TTN_rssi', 'rssi');
 define('ITPINGS_RSSI', TTN_rssi);
-define('DBFIELD_RSSI', [ITPINGS_RSSI, 'TINYINT SIGNED', 'TTN GatewayPing RSSI']);          // ?? -85 dBm to -45dBm
+$_DBFIELD_RSSI = [ITPINGS_RSSI, 'TINYINT SIGNED', 'TTN GatewayPing RSSI'];          // ?? -85 dBm to -45dBm
 
 define('TTN_snr', 'snr');
 define('ITPINGS_SNR', TTN_snr);
-define('DBFIELD_SNR', [ITPINGS_SNR, 'DECIMAL(4,2)', 'TTN GatewayPing SNR']);             // ?? 8.25 Decibels ?? DD.dd
+$_DBFIELD_SNR = [ITPINGS_SNR, 'DECIMAL(4,2)', 'TTN GatewayPing SNR'];             // ?? 8.25 Decibels ?? DD.dd
 
 define('TTN_rf_chain', 'rf_chain');
 define('ITPINGS_RFCHAIN', 'rfchain');
-define('DBFIELD_RFCHAIN', [ITPINGS_RFCHAIN, 'TINYINT UNSIGNED', '"TTN GatewayPing RFChain"']);     // ?? 0 or 1
+$_DBFIELD_RFCHAIN = [ITPINGS_RFCHAIN, 'TINYINT UNSIGNED', '"TTN GatewayPing RFChain"'];     // ?? 0 or 1
 
 define('TTN_port', 'port');
 define('ITPINGS_PORT', TTN_port);
-define('DBFIELD_PORT', [ITPINGS_PORT, 'TINYINT UNSIGNED', '']);        // ?? always 1 ??
+$_DBFIELD_PORT = [ITPINGS_PORT, 'TINYINT UNSIGNED', ''];        // ?? always 1 ??
 
 define('TTN_downlink_url', 'downlink_url');
 define('ITPINGS_DOWNLINKURL', 'downurl');
-define('DBFIELD_DOWNLINKURL', [ITPINGS_DOWNLINKURL, 'VARCHAR(1024)', 'TTN Downlink URI']);       // ?? save Web URL = 2000
+$_DBFIELD_DOWNLINKURL = [ITPINGS_DOWNLINKURL, 'VARCHAR(1024)', 'TTN Downlink URI'];       // ?? save Web URL = 2000
 
 define('TTN_counter', 'counter');
 define('ITPINGS_FRAME_COUNTER', 'count');
-define('DBFIELD_FRAME_COUNTER', [ITPINGS_FRAME_COUNTER, 'INT UNSIGNED', 'TTN Frame Counter']);
+$_DBFIELD_FRAME_COUNTER = [ITPINGS_FRAME_COUNTER, 'INT UNSIGNED', 'TTN Frame Counter'];
 
 define('TTN_payload_raw', 'payload_raw');
 define('ITPINGS_PAYLOAD_RAW', 'payload');
-define('DBFIELD_PAYLOAD_RAW', [ITPINGS_PAYLOAD_RAW, 'VARCHAR(256)', 'Raw payload is purged']);    // ?? 256 enough?
+$_DBFIELD_PAYLOAD_RAW = [ITPINGS_PAYLOAD_RAW, 'VARCHAR(256)', 'Raw payload is purged'];    // ?? 256 enough?
 
 define('TTN_frequency', 'frequency');
 define('ITPINGS_FREQUENCY', TTN_frequency);
@@ -274,30 +278,30 @@ define('TTN_payload_fields', 'payload_fields');
 
 // Sensor names and values, key name in JSON payload
 define('ITPINGS_SENSORNAME', 'sensorname');
-define('DBFIELD_SENSORNAME', [ITPINGS_SENSORNAME, 'VARCHAR(256)', "TTN Payload key"]);    // ?? 256 enough?
+$_DBFIELD_SENSORNAME = [ITPINGS_SENSORNAME, 'VARCHAR(256)', "TTN Payload key"];    // ?? 256 enough?
 
 define('ITPINGS_SENSORVALUE', 'sensorvalue');
-define('DBFIELD_SENSORVALUE', [ITPINGS_SENSORVALUE, 'VARCHAR(1024)', 'TTN Payload value']);      // key value in JSON payload
+$_DBFIELD_SENSORVALUE = [ITPINGS_SENSORVALUE, 'VARCHAR(1024)', 'TTN Payload value'];      // key value in JSON payload
 
 /**
  * Foreign keys are not for performance,
  * they sure help with debugging,
  * and also cause headaches when you try to delete data
  **/
-define('FOREIGNKEY_APPLICATIONS', [PRIMARYKEY_Application, "REFERENCES " . TABLE_APPLICATIONS . " ( " . PRIMARYKEY_Application . ")"]);
-define('FOREIGNKEY_DEVICES', [PRIMARYKEY_Device, "REFERENCES " . TABLE_DEVICES . " ( " . PRIMARYKEY_Device . ")"]);
-define('FOREIGNKEY_APPLICATIONDEVICES', [PRIMARYKEY_ApplicationDevice, "REFERENCES " . TABLE_APPLICATIONDEVICES . " ( " . PRIMARYKEY_ApplicationDevice . ")"]);
-define('FOREIGNKEY_PINGS', [PRIMARYKEY_Ping, "REFERENCES " . TABLE_PINGS . " ( " . PRIMARYKEY_Ping . ")"]);
-define('FOREIGNKEY_GATEWAYS', [PRIMARYKEY_Gateway, "REFERENCES " . TABLE_GATEWAYS . " ( " . PRIMARYKEY_Gateway . ")"]);
-define('FOREIGNKEY_SENSORS', [PRIMARYKEY_Sensor, "REFERENCES " . TABLE_SENSORS . " ( " . PRIMARYKEY_Sensor . ")"]);
-define('FOREIGNKEY_LOCATIONS', [PRIMARYKEY_Location, "REFERENCES " . TABLE_LOCATIONS . " ( " . PRIMARYKEY_Location . ")"]);
-//define('FOREIGNKEY_APPLICATIONS', FALSE);
-//define('FOREIGNKEY_DEVICES', FALSE);
-//define('FOREIGNKEY_APPLICATIONDEVICES', FALSE);
-//define('FOREIGNKEY_PINGS', FALSE);
-//define('FOREIGNKEY_GATEWAYS', FALSE);
-//define('FOREIGNKEY_SENSORS', FALSE);
-//define('FOREIGNKEY_LOCATIONS', FALSE);
+$_FOREIGNKEY_APPLICATIONS = [PRIMARYKEY_Application, "REFERENCES " . TABLE_APPLICATIONS . " ( " . PRIMARYKEY_Application . ")"];
+$_FOREIGNKEY_DEVICES = [PRIMARYKEY_Device, "REFERENCES " . TABLE_DEVICES . " ( " . PRIMARYKEY_Device . ")"];
+$_FOREIGNKEY_APPLICATIONDEVICES = [PRIMARYKEY_ApplicationDevice, "REFERENCES " . TABLE_APPLICATIONDEVICES . " ( " . PRIMARYKEY_ApplicationDevice . ")"];
+$_FOREIGNKEY_PINGS = [PRIMARYKEY_Ping, "REFERENCES " . TABLE_PINGS . " ( " . PRIMARYKEY_Ping . ")"];
+$_FOREIGNKEY_GATEWAYS = [PRIMARYKEY_Gateway, "REFERENCES " . TABLE_GATEWAYS . " ( " . PRIMARYKEY_Gateway . ")"];
+$_FOREIGNKEY_SENSORS = [PRIMARYKEY_Sensor, "REFERENCES " . TABLE_SENSORS . " ( " . PRIMARYKEY_Sensor . ")"];
+$_FOREIGNKEY_LOCATIONS = [PRIMARYKEY_Location, "REFERENCES " . TABLE_LOCATIONS . " ( " . PRIMARYKEY_Location . ")"];
+//$_FOREIGNKEY_APPLICATIONS', FALSE);
+//$_FOREIGNKEY_DEVICES', FALSE);
+//$_FOREIGNKEY_APPLICATIONDEVICES', FALSE);
+//$_FOREIGNKEY_PINGS', FALSE);
+//$_FOREIGNKEY_GATEWAYS', FALSE);
+//$_FOREIGNKEY_SENSORS', FALSE);
+//$_FOREIGNKEY_LOCATIONS', FALSE);
 
 // Table 'events'
 define('ENUM_EVENTTYPE_New', 'New');
@@ -312,7 +316,7 @@ define('ENUM_EVENTTYPE_Log', 'Log');
 define('ENUM_EVENTTYPE_Trigger', 'Trigger');
 define('ENUM_EVENTTYPE_Error', 'Error');
 //convert array to quoted string as SQL ENUM definition
-define('TYPE_EVENTTYPE', sprintf("ENUM('%s')", implode("','", array(
+$_TYPE_EVENTTYPE = sprintf("ENUM('%s')", implode("','", array(
     ENUM_EVENTTYPE_NewApp
 , ENUM_EVENTTYPE_NewDevice
 , ENUM_EVENTTYPE_NewGateway
@@ -322,20 +326,20 @@ define('TYPE_EVENTTYPE', sprintf("ENUM('%s')", implode("','", array(
 , ENUM_EVENTTYPE_NewView
 , ENUM_EVENTTYPE_Log
 , ENUM_EVENTTYPE_Trigger
-, ENUM_EVENTTYPE_Error))));
+, ENUM_EVENTTYPE_Error)));
 
 define('ITPINGS_EVENTTYPE', 'eventtype');
-define('DBFIELD_EVENTTYPE', [ITPINGS_EVENTTYPE, TYPE_EVENTTYPE . " DEFAULT '" . ENUM_EVENTTYPE_Log . "'", "Event ENUM_EVENTTYPE values"]);
+$_DBFIELD_EVENTTYPE = [ITPINGS_EVENTTYPE, $_TYPE_EVENTTYPE . " DEFAULT '" . ENUM_EVENTTYPE_Log . "'", "Event ENUM_EVENTTYPE values"];
 
 define('ITPINGS_EVENTLABEL', 'eventlabel');
-define('DBFIELD_EVENTLABEL', [ITPINGS_EVENTLABEL, 'VARCHAR(256)', "Event label"]);
+$_DBFIELD_EVENTLABEL = [ITPINGS_EVENTLABEL, 'VARCHAR(256)', "Event label"];
 
 define('ITPINGS_EVENTVALUE', 'eventvalue');
-define('DBFIELD_EVENTVALUE', [ITPINGS_EVENTVALUE, 'VARCHAR(4096)', "Event text, can include POST BODY"]);
+$_DBFIELD_EVENTVALUE = [ITPINGS_EVENTVALUE, 'VARCHAR(4096)', "Event text, can include POST BODY"];
 
 
 define('ITPINGS_CREATED_TIMESTAMP', 'created');
-define('DBFIELD_CREATED_TIMESTAMP', [ITPINGS_CREATED_TIMESTAMP, ' TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ', 'Time Ping was Created in ITpings database']);
+$_DBFIELD_CREATED_TIMESTAMP = [ITPINGS_CREATED_TIMESTAMP, ' TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ', 'Time Ping was Created in ITpings database'];
 
 
 define('ITPINGS_DESCRIPTION', 'description');
@@ -361,12 +365,12 @@ define('VIEWNAME_PINGEDGATEWAYS', TABLE_PREFIX . 'PingedGateways');
 
 // Loop all names in front-end query check
 // and Loop all names in DROP VIEW action
-define('ITPINGS_VIEWNAMES', [
+$_ITPINGS_VIEWNAMES = [
     VIEWNAME_EVENTS
     , VIEWNAME_APPLICATIONDEVICES
     , VIEWNAME_SENSORVALUES
     , VIEWNAME_GATEWAYS
-    , VIEWNAME_PINGEDGATEWAYS]);
+    , VIEWNAME_PINGEDGATEWAYS];
 
 //endregion == VIEW AND QUERY CONFIGURATION =======================================================
 
@@ -389,19 +393,19 @@ define('INTERVALUNIT_MONTH', 'MONTH');
 define('INTERVALUNIT_QUARTER', 'QUARTER');
 define('INTERVALUNIT_YEAR', 'YEAR');
 define('INTERVALUNIT_DEFAULT', INTERVALUNIT_DAY);
-define('QUERY_ALLOWED_INTERVALUNITS', [INTERVALUNIT_SECOND
+$_QUERY_ALLOWED_INTERVALUNITS = [INTERVALUNIT_SECOND
     , INTERVALUNIT_MINUTE
     , INTERVALUNIT_HOUR
     , INTERVALUNIT_DAY
     , INTERVALUNIT_WEEK
     , INTERVALUNIT_MONTH
     , INTERVALUNIT_QUARTER
-    , INTERVALUNIT_YEAR]);
+    , INTERVALUNIT_YEAR];
 
 /**
  * Only these fieldnames can be used as WebService Query URI parameters
  * **/
-define('VALID_QUERY_PARAMETERS', [
+$_VALID_QUERY_PARAMETERS = [
     PRIMARYKEY_Application,
     PRIMARYKEY_Device,
     PRIMARYKEY_Sensor,
@@ -415,11 +419,10 @@ define('VALID_QUERY_PARAMETERS', [
     ITPINGS_EVENTVALUE,
     QUERY_PARAMETER_FILTER,
     QUERY_PARAMETER_ORDERBY,
-    QUERY_PARAMETER_ORDERSORT,
     QUERY_PARAMETER_INTERVAL,
     QUERY_PARAMETER_INTERVALUNIT,
     QUERY_PARAMETER_LIMIT
-]);
+];
 
 
 //PREDEFINED QUERIES

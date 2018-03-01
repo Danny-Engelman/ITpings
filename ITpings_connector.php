@@ -66,6 +66,7 @@ function SQL_Query($sql, $returnJSON = FALSE)
             $JSON_response['result'] = $rows;
             print json_encode($JSON_response);
         } else {
+            echo "$sql=" . $sql . "<hr>";
             return mysqli_fetch_assoc($result); // return first $row
         }
     } else {
@@ -73,6 +74,34 @@ function SQL_Query($sql, $returnJSON = FALSE)
         print json_encode($JSON_response);
     }
     return false;
+}
+
+/**
+ * @param $table_name
+ * @param $sql
+ * @return bool|mysqli_result
+ */
+function SQL_CREATE_TABLE($table_name, $sql)
+{
+    global $MySQL_DB_Connection;
+
+    insert_TTN_Event(ENUM_EVENTTYPE_NewTable, $table_name, $sql);
+
+    return mysqli_query($MySQL_DB_Connection, $sql);
+}
+
+/**
+ * @param $view_name
+ * @param $sql
+ * @return bool|mysqli_result
+ */
+function SQL_CREATE_or_REPLACE_VIEW($view_name, $sql)
+{
+    global $MySQL_DB_Connection;
+
+    insert_TTN_Event(ENUM_EVENTTYPE_NewView, $view_name, $sql);
+
+    return mysqli_query($MySQL_DB_Connection, $sql);
 }
 
 /**
@@ -141,6 +170,49 @@ function Valued($val)
 
 function create_ITpings_Tables()
 {
+    global $_DBFIELD_EVENTTYPE;
+    global $_DBFIELD_EVENTLABEL;
+    global $_DBFIELD_EVENTVALUE;
+    global $_DBFIELD_PRIMARYKEY_APPLICATION;
+    global $_DBFIELD_PRIMARYKEY_DEVICE;
+    global $_DBFIELD_POST_BODY;
+    global $_DBFIELD_APPLICATION_ID;
+    global $_DBFIELD_APPLICATION_DESCRIPTION;
+    global $_DBFIELD_DEVICE_ID;
+    global $_DBFIELD_HARDWARE_SERIAL;
+    global $_DBFIELD_LATITUDE;
+    global $_DBFIELD_LONGITUDE;
+    global $_DBFIELD_ALTITUDE;
+    global $_DBFIELD_LOCATION_SOURCE;
+    global $_DBFIELD_GATEWAY_ID;
+    global $_DBFIELD_TRUSTED_GATEWAY;
+    global $_DBFIELD_LOCATION;
+    global $_DBFIELD_CREATED_TIMESTAMP;
+    global $_DBFIELD_APPLICATION_DEVICE;
+    global $_DBFIELD_PORT;
+    global $_DBFIELD_FRAME_COUNTER;
+    global $_DBFIELD_DOWNLINKURL;
+    global $_DBFIELD_PAYLOAD_RAW;
+    global $_DBFIELD_GATEWAY;
+    global $_DBFIELD_PINGED_GATEWAY_TIMESTAMP;
+    global $_DBFIELD_ITPINGS_TIME;
+    global $_DBFIELD_CHANNEL;
+    global $_DBFIELD_RSSI;
+    global $_DBFIELD_SNR;
+    global $_DBFIELD_RFCHAIN;
+    global $_DBFIELD_SENSORNAME;
+    global $_DBFIELD_PRIMARYKEY_PING;
+    global $_DBFIELD_PRIMARYKEY_SENSOR;
+    global $_DBFIELD_SENSORVALUE;
+
+    global $_FOREIGNKEY_APPLICATIONS;
+    global $_FOREIGNKEY_DEVICES;
+    global $_FOREIGNKEY_APPLICATIONDEVICES;
+    global $_FOREIGNKEY_PINGS;
+    global $_FOREIGNKEY_GATEWAYS;
+    global $_FOREIGNKEY_SENSORS;
+    global $_FOREIGNKEY_LOCATIONS;
+
     /**
      * @param $table_name
      * @param $primary_key_name - can be False to indicate this table has NO primary key
@@ -154,31 +226,33 @@ function create_ITpings_Tables()
         if ($primary_key_name) {
             $sql .= "$primary_key_name $primary_key_type UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT COMMENT 'ITpings Primary Key' , ";
         }
-        foreach ($fields as $index => $field) {
-            if ($index > 0) $sql .= " , ";
-            $sql .= " $field[0] $field[1] COMMENT '$field[2]'";
+        if (is_array($fields) || is_object($fields)) {
+            foreach ($fields as $index => $field) {
+                if ($index > 0) $sql .= " , ";
+                $sql .= " $field[0] $field[1] COMMENT '$field[2]'";
+            }
         }
-        foreach ($foreignkeys as $index => $key) {
-            $sql .= " , FOREIGN KEY ($key[0]) $key[1]";
+        if (is_array($foreignkeys) || is_object($foreignkeys)) {
+            foreach ($foreignkeys as $index => $key) {
+                $sql .= " , FOREIGN KEY ($key[0]) $key[1]";
+            }
         }
         if ($primary_key_name) {
             $sql .= " , PRIMARY KEY ($primary_key_name)";
         }
         $sql .= ") ENGINE=InnoDB DEFAULT CHARSET=utf8;";
-        echo $sql . "<br><br>";
-        SQL_Query($sql);
-
-        insert_TTN_Event(ENUM_EVENTTYPE_NewTable, $table_name, $sql);
+        echo "$sql<HR>";
+        SQL_CREATE_TABLE($table_name, $sql);
     }
 
     create_Table(TABLE_EVENTS
         , NO_PRIMARYKEY
         , FALSE
         , [//Fields
-            DBFIELD_PRIMARYKEY_PING
-            , DBFIELD_EVENTTYPE
-            , DBFIELD_EVENTLABEL
-            , DBFIELD_EVENTVALUE
+            $_DBFIELD_PRIMARYKEY_PING
+            , $_DBFIELD_EVENTTYPE
+            , $_DBFIELD_EVENTLABEL
+            , $_DBFIELD_EVENTVALUE
         ]
         , NO_FOREIGNKEYS/** No Foreign Key so the Events table can be used for any entry **/
     );
@@ -188,7 +262,7 @@ function create_ITpings_Tables()
             , PRIMARYKEY_POSTrequests
             , TYPE_FOREIGNKEY
             , [//Fields
-                DBFIELD_POST_BODY
+                $_DBFIELD_POST_BODY
             ]
             , NO_FOREIGNKEYS
         );
@@ -197,16 +271,16 @@ function create_ITpings_Tables()
     create_Table(TABLE_APPLICATIONS
         , PRIMARYKEY_Application
         , TYPE_FOREIGNKEY
-        , [DBFIELD_APPLICATION_ID
-            , DBFIELD_APPLICATION_DESCRIPTION]
+        , [$_DBFIELD_APPLICATION_ID
+            , $_DBFIELD_APPLICATION_DESCRIPTION]
         , NO_FOREIGNKEYS
     );
 
     create_Table(TABLE_DEVICES
         , PRIMARYKEY_Device
         , TYPE_FOREIGNKEY
-        , [DBFIELD_DEVICE_ID
-            , DBFIELD_HARDWARE_SERIAL
+        , [$_DBFIELD_DEVICE_ID
+            , $_DBFIELD_HARDWARE_SERIAL
         ]
         , NO_FOREIGNKEYS
     );
@@ -215,10 +289,10 @@ function create_ITpings_Tables()
         , PRIMARYKEY_ApplicationDevice
         , TYPE_FOREIGNKEY
         , [//Fields
-            DBFIELD_PRIMARYKEY_APPLICATION
-            , DBFIELD_PRIMARYKEY_DEVICE
+            $_DBFIELD_PRIMARYKEY_APPLICATION
+            , $_DBFIELD_PRIMARYKEY_DEVICE
         ]
-        , [FOREIGNKEY_APPLICATIONS, FOREIGNKEY_DEVICES]
+        , [$_FOREIGNKEY_APPLICATIONS, $_FOREIGNKEY_DEVICES]
     );
 
     function create_LookupTable($table, $primary_key_name, $field_name, $field_datatype)
@@ -235,7 +309,7 @@ function create_ITpings_Tables()
         return [
             $primary_key_name
             , TYPE_FOREIGNKEY_LOOKUPTABLE
-            , PrimaryKey_In . $table];
+            , " REFERENCES " . $table];
     }
 
     $frequency_declaration = create_LookupTable(TABLE_FREQUENCIES
@@ -262,10 +336,10 @@ function create_ITpings_Tables()
     create_Table(TABLE_LOCATIONS
         , PRIMARYKEY_Location
         , TYPE_FOREIGNKEY
-        , [DBFIELD_LATITUDE
-            , DBFIELD_LONGITUDE
-            , DBFIELD_ALTITUDE
-            , DBFIELD_LOCATION_SOURCE
+        , [$_DBFIELD_LATITUDE
+            , $_DBFIELD_LONGITUDE
+            , $_DBFIELD_ALTITUDE
+            , $_DBFIELD_LOCATION_SOURCE
         ]
         , NO_FOREIGNKEYS
     );
@@ -273,74 +347,74 @@ function create_ITpings_Tables()
     create_Table(TABLE_GATEWAYS
         , PRIMARYKEY_Gateway
         , TYPE_FOREIGNKEY
-        , [DBFIELD_GATEWAY_ID
-            , DBFIELD_TRUSTED_GATEWAY
-            , DBFIELD_LOCATION
+        , [$_DBFIELD_GATEWAY_ID
+            , $_DBFIELD_TRUSTED_GATEWAY
+            , $_DBFIELD_LOCATION
         ]
-        , [FOREIGNKEY_LOCATIONS]
+        , [$_FOREIGNKEY_LOCATIONS]
     );
 
     create_Table(TABLE_PINGS
         , PRIMARYKEY_Ping
         , TYPE_FOREIGNKEY
         , [//Fields
-            DBFIELD_CREATED_TIMESTAMP
-            , DBFIELD_APPLICATION_DEVICE
+            $_DBFIELD_CREATED_TIMESTAMP
+            , $_DBFIELD_APPLICATION_DEVICE
 
-            , DBFIELD_PORT
-            , DBFIELD_FRAME_COUNTER
-            , DBFIELD_DOWNLINKURL
-            , DBFIELD_PAYLOAD_RAW
+            , $_DBFIELD_PORT
+            , $_DBFIELD_FRAME_COUNTER
+            , $_DBFIELD_DOWNLINKURL
+            , $_DBFIELD_PAYLOAD_RAW
 
-            , DBFIELD_ITPINGS_TIME
+            , $_DBFIELD_ITPINGS_TIME
 
             , $frequency_declaration
             , $modulation_declaration
             , $datarate_declaration
             , $codingrate_declaration
 
-            , DBFIELD_LOCATION
+            , $_DBFIELD_LOCATION
 
             , $origin_declaration
         ]
-        , [FOREIGNKEY_APPLICATIONDEVICES]
+        , [$_FOREIGNKEY_APPLICATIONDEVICES]
     );
 
     create_Table(TABLE_PINGEDGATEWAYS
         , NO_PRIMARYKEY
         , FALSE
         , [//Fields
-            DBFIELD_PRIMARYKEY_PING
-            , DBFIELD_GATEWAY
-            , DBFIELD_PINGED_GATEWAY_TIMESTAMP
-            , DBFIELD_ITPINGS_TIME
-            , DBFIELD_CHANNEL
-            , DBFIELD_RSSI
-            , DBFIELD_SNR
-            , DBFIELD_RFCHAIN
+            $_DBFIELD_PRIMARYKEY_PING
+            , $_DBFIELD_GATEWAY
+            , $_DBFIELD_PINGED_GATEWAY_TIMESTAMP
+            , $_DBFIELD_ITPINGS_TIME
+            , $_DBFIELD_CHANNEL
+            , $_DBFIELD_RSSI
+            , $_DBFIELD_SNR
+            , $_DBFIELD_RFCHAIN
         ]
-        , [FOREIGNKEY_PINGS, FOREIGNKEY_GATEWAYS]
+        , [$_FOREIGNKEY_PINGS, $_FOREIGNKEY_GATEWAYS]
     );
 
     create_Table(TABLE_SENSORS
         , PRIMARYKEY_Sensor
         , TYPE_FOREIGNKEY
         , [//Fields
-            DBFIELD_APPLICATION_DEVICE
-            , DBFIELD_SENSORNAME
+            $_DBFIELD_APPLICATION_DEVICE
+            , $_DBFIELD_SENSORNAME
         ]
-        , [FOREIGNKEY_APPLICATIONDEVICES]
+        , [$_FOREIGNKEY_APPLICATIONDEVICES]
     );
 
     create_Table(TABLE_SENSORVALUES
         , NO_PRIMARYKEY
         , FALSE
         , [//Fields
-            DBFIELD_PRIMARYKEY_PING
-            , DBFIELD_PRIMARYKEY_SENSOR
-            , DBFIELD_SENSORVALUE
+            $_DBFIELD_PRIMARYKEY_PING
+            , $_DBFIELD_PRIMARYKEY_SENSOR
+            , $_DBFIELD_SENSORVALUE
         ]
-        , [FOREIGNKEY_PINGS, FOREIGNKEY_SENSORS]
+        , [$_FOREIGNKEY_PINGS, $_FOREIGNKEY_SENSORS]
     );
 
 }//end function createTables
@@ -356,7 +430,8 @@ function create_ITpings_Views()
         echo "<pre>" . $sql . "</pre>";
     }
 
-    foreach (ITPINGS_VIEWNAMES as $view_name) {
+    global $_ITPINGS_VIEWNAMES;
+    foreach ($_ITPINGS_VIEWNAMES as $view_name) {
         /**
          * Instructions for creating a new VIEW
          * - define the VIEW name in ITpings_configuration
@@ -433,9 +508,7 @@ function create_ITpings_Views()
                 break;
         }
 
-        SQL_Query($sql . $view);
-
-        insert_TTN_Event(ENUM_EVENTTYPE_NewView, $view_name, $sql);
+        SQL_CREATE_or_REPLACE_VIEW($view_name, $sql . $view);
 
     }
 }
@@ -672,7 +745,7 @@ function process_Ping_and_Gateway_Location($lat, $lon, $alt, $location_source)
         insert_TTN_Event(ENUM_EVENTTYPE_NewLocation, $lat, $lon);
 
     } else { //existing location, now check Height
-        if (CHECK_HEIGHT_FOR_PING) {
+        if (CHECK_ALTITUDE_IN_PING) {
 
             $where .= " AND " . ITPINGS_ALTITUDE . "=$alt";
             $height_key_id = SQL_find_existing_key_id(PRIMARYKEY_Location, TABLE_LOCATIONS, $where);
@@ -1029,12 +1102,15 @@ function process_Query_with_QueryString_Parameters()
             break;
     }
 
+    global $_VALID_QUERY_PARAMETERS;
+    global $_QUERY_ALLOWED_INTERVALUNITS;
+
     if ($table_name) {
         /** Built a safe SQL query **/
         $where = EMPTY_STRING;
         $order = EMPTY_STRING;
         $limit = EMPTY_STRING;
-        foreach (VALID_QUERY_PARAMETERS as $parameter) {
+        foreach ($_VALID_QUERY_PARAMETERS as $parameter) {
             $parameter_value = SQL_InjectionSave_OneWordString($urlVars[$parameter]);
             if ($parameter_value) {
                 $PARAMETER_HAS_SEPARATOR = strpos($parameter_value, QUERY_PARAMETER_SEPARATOR) !== FALSE;
@@ -1048,7 +1124,7 @@ function process_Query_with_QueryString_Parameters()
                     case QUERY_PARAMETER_INTERVAL:
                         //https://dev.mysql.com/doc/refman/5.7/en/date-and-time-functions.html#function_date-add
                         $interval_unit = strtoupper($urlVars[QUERY_PARAMETER_INTERVALUNIT]);
-                        if (!in_array($interval_unit, QUERY_ALLOWED_INTERVALUNITS)) {
+                        if (!in_array($interval_unit, $_QUERY_ALLOWED_INTERVALUNITS)) {
                             $interval_unit = 'HOUR';
                         }
                         $where .= $and . ITPINGS_CREATED_TIMESTAMP . " >= DATE_SUB(NOW(), INTERVAL " . (int)$parameter_value . " " . $interval_unit . ")";
@@ -1066,9 +1142,8 @@ function process_Query_with_QueryString_Parameters()
                                 $fieldname = $field[0];
                                 $fieldsort = $field[1];
                                 if (!$fieldsort) $fieldsort = 'ASC';
-                                if (in_array($fieldname, VALID_QUERY_PARAMETERS)) {
+                                if (in_array($fieldname, $_VALID_QUERY_PARAMETERS)) {
                                     $orderbyfields[] .= $fieldname . ' ' . $fieldsort;
-                                } else {
                                 }
                             }
                             $parameter_value = implode(QUERY_PARAMETER_SEPARATOR, $orderbyfields);
@@ -1166,12 +1241,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     switch ($urlVars['action']) {
         case 'drop':
             if (YOUR_ITPINGS_KEY === $urlVars['key']) {
-                foreach (ITPINGS_TABLES as $index => $table_name) {
+                foreach ($_ITPINGS_TABLES as $index => $table_name) {
                     $sql = "DROP TABLE IF EXISTS $table_name;";
                     echo $sql;
                     SQL_Query($sql);
                 }
-                foreach (ITPINGS_VIEWNAMES as $index => $view) {
+                foreach ($_ITPINGS_VIEWNAMES as $index => $view) {
                     $sql = "DROP VIEW IF EXISTS $view;";
                     echo $sql;
                     SQL_Query($sql);

@@ -38,9 +38,12 @@ if (mysqli_connect_errno()) {
     die("Failed to connect to MySQL: " . mysqli_connect_error());
 }
 
-$JSON_response = array(
-    'mysqlversion' => mysqli_get_server_info($MySQL_DB_Connection)
-);
+$JSON_response = array();
+$JSON_response['ip'] = PING_ORIGIN;
+$JSON_response['mysqlversion'] = mysqli_get_server_info($MySQL_DB_Connection);
+$JSON_response['sql'] = FALSE;
+$JSON_response['result'] = FALSE;
+
 /**
  * @param $sql
  * @param bool $returnJSON
@@ -62,11 +65,11 @@ function SQL_Query($sql, $returnJSON = FALSE)
                 $rows[] = $row;
             }
             // http://nitschinger.at/Handling-JSON-like-a-boss-in-PHP/
-            header('Content-type: application/json');
+            //header('Content-type: application/json');
             $JSON_response['result'] = $rows;
             print json_encode($JSON_response);
         } else {
-            echo "$sql=" . $sql . "<hr>";
+            if (gettype($result) === 'boolean') return false;
             return mysqli_fetch_assoc($result); // return first $row
         }
     } else {
@@ -241,7 +244,7 @@ function create_ITpings_Tables()
             $sql .= " , PRIMARY KEY ($primary_key_name)";
         }
         $sql .= ") ENGINE=InnoDB DEFAULT CHARSET=utf8;";
-        echo "$sql<HR>";
+//        echo "$sql<HR>";
         SQL_CREATE_TABLE($table_name, $sql);
     }
 
@@ -1213,7 +1216,7 @@ if (CREATE_DATABASE_ON_FIRST_PING) {
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (YOUR_ITPINGS_KEY !== $urlVars['key']) {
-        echo "Invalid key";
+        echo "Invalid key" . $urlVars['key'] . ", 21 edit your ITpings_access_database.php file; " . YOUR_ITPINGS_KEY;
     } else {
 
         $POST_body = trim(file_get_contents("php://input"));

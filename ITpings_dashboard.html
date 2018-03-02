@@ -142,6 +142,10 @@
             display: none;
         }
 
+        .itpings-table-error {
+            background:lightcoral;
+            color:yellow;
+        }
     </style>
     <style id="Color new Pings">
         itpings-table TBODY:nth-child(odd) {
@@ -213,7 +217,9 @@
     <script language="JavaScript" src="ITpings_dashboard.js"></script>
 </head>
 <body>
-<a href="https://github.com/Danny-Engelman/ITpings"><img style="position: absolute; top: 0; left: 0; border: 0;" src="https://s3.amazonaws.com/github/ribbons/forkme_left_orange_ff7600.png" alt="Fork me on GitHub"></a>
+<a href="https://github.com/Danny-Engelman/ITpings"><img style="position: absolute; top: 0; left: 0; border: 0;"
+                                                         src="https://s3.amazonaws.com/github/ribbons/forkme_left_orange_ff7600.png"
+                                                         alt="Fork me on GitHub"></a>
 <table class="ITpings-dashboard">
     <thead>
     <tr>
@@ -224,7 +230,7 @@
                 <button id="createDatabase">Create Database</button>
             </div>
             <script>
-                let key = 'DANNY1969';
+                let key = 'YOUR_PRIVATE_KEY';// but you better not use this on a public website!
 
                 function doAction(action) {
                     document.location = './ITpings_connector.php?action=' + action + '&key=' + key
@@ -236,6 +242,7 @@
                 document.querySelector('#createDatabase').addEventListener('click', _ => {
                     doAction('create');
                 });
+
             </script>
         </th>
     </tr>
@@ -243,6 +250,7 @@
     <tbody>
     <tr>
         <td>
+            <itpings-table query="DBInfo" title="ITpings Database Info"></itpings-table>
             <itpings-table query="applications" title="All Applications"></itpings-table>
             <itpings-table query="Devices" title="All Devices"></itpings-table>
             <itpings-table query="Events" title="ITpings Events"></itpings-table>

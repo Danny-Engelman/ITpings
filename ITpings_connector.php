@@ -38,11 +38,21 @@ if (mysqli_connect_errno()) {
     die("Failed to connect to MySQL: " . mysqli_connect_error());
 }
 
+/**
+ * Building a single JSON response structure
+ * so we can easily return any info we need (like ALL the max(_pingid) count from multiple tables
+ */
 $JSON_response = array();
 $JSON_response['ip'] = PING_ORIGIN;
 $JSON_response['mysqlversion'] = mysqli_get_server_info($MySQL_DB_Connection);
 $JSON_response['sql'] = FALSE;
 $JSON_response['result'] = FALSE;
+
+function return_JSON_response()
+{
+    global $JSON_response;
+    print json_encode($JSON_response);
+}
 
 /**
  * @param $sql
@@ -67,14 +77,13 @@ function SQL_Query($sql, $returnJSON = FALSE)
             // http://nitschinger.at/Handling-JSON-like-a-boss-in-PHP/
             //header('Content-type: application/json');
             $JSON_response['result'] = $rows;
-            print json_encode($JSON_response);
+            return_JSON_response();
         } else {
-            if (gettype($result) === 'boolean') return false;
-            return mysqli_fetch_assoc($result); // return first $row
+            return (gettype($result) === 'boolean') ? $result : mysqli_fetch_assoc($result); // return first $row
         }
     } else {
         $JSON_response += array('error' => mysqli_error($MySQL_DB_Connection));
-        print json_encode($JSON_response);
+        return_JSON_response();
     }
     return false;
 }
@@ -585,7 +594,6 @@ function SQL_find_existing_key_id($primary_key_field, $table_name, $where_clause
  *
  * @param $table
  * @param $primarykey
- * @param $db_field
  * @param $lookup_field
  * @param $lookup_value
  * @return string
@@ -1046,6 +1054,16 @@ function process_Predefined_Query()
                 $sql .= process_QueryParameter_Filter('', ' AND AD.', $urlVars[QUERY_PARAMETER_FILTER]);
             }
             break;
+        case SQL_QUERY_DatabaseInfo: // query=DBInfo
+            $sql = "SELECT REPLACE(S.TABLE_NAME,'" . TABLE_PREFIX . "%','') AS `Table`";
+            $sql .= ",S.TABLE_ROWS AS Rows";
+            $sql .= ",S.AVG_ROW_LENGTH AS RowLength, S.DATA_LENGTH AS DataLength";
+            $sql .= ",S.INDEX_LENGTH AS IndexLength,S.DATA_FREE AS Free";
+            $sql .= " FROM information_schema.tables S ";
+            $sql .= " WHERE table_name LIKE `" . TABLE_PREFIX . "%`";
+            $sql .= " AND TABLE_TYPE = `BASE TABLE`";
+            $sql .= " ORDER BY TABLE_NAME ASC";
+            break;
     }
 
     return $sql;
@@ -1076,6 +1094,7 @@ function process_QueryParameter_Filter($where, $and, $parameter_value)
 function process_Query_with_QueryString_Parameters()
 {
     global $urlVars;
+    global $JSON_response;
     $sql = EMPTY_STRING;
 
     $queryName = $urlVars['query'];
@@ -1168,10 +1187,10 @@ function process_Query_with_QueryString_Parameters()
 
                     default:
                         if ($PARAMETER_HAS_SEPARATOR) {
-                            $where .= $and . "$parameter IN (" . $parameter_value . ")";//todo allow for strings
+                            $where .= $and . "$parameter IN(" . $parameter_value . ")";//todo allow for strings
                         } else {
                             $parameter_value = (is_numeric($parameter_value) ? Valued($parameter_value) : Quoted($parameter_value));
-                            $where .= $and . "$parameter=" . $parameter_value;
+                            $where .= $and . "$parameter = " . $parameter_value;
                         }
                         break;
                 }
@@ -1191,7 +1210,8 @@ function process_Query_with_QueryString_Parameters()
         $sql .= $order . $limit;
     }
     if ($sql === EMPTY_STRING) {
-        echo "{\"SQL\":\"Error: Empty SQL statement \"}";
+        $JSON_response['error'] = "Error: Empty SQL statement";
+
     } else {
         SQL_Query($sql, TRUE);
     }
@@ -1206,7 +1226,8 @@ $urlVars = array();
 parse_str($_SERVER['QUERY_STRING'], $urlVars);
 
 if (CREATE_DATABASE_ON_FIRST_PING) {
-    $ITpings_DatabaseInfo = SQL_Query("SELECT * FROM information_schema.tables WHERE table_name LIKE 'ITpings%' ORDER BY TABLE_TYPE ASC");
+    $sql = "SELECT * FROM information_schema.tables WHERE table_name LIKE '" . TABLE_PREFIX . "%' ORDER BY TABLE_TYPE ASC";
+    $ITpings_DatabaseInfo = SQL_Query($sql);
     if (!$ITpings_DatabaseInfo) {
         create_ITpings_Tables();
         create_ITpings_Views();

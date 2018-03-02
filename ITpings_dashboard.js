@@ -1,10 +1,10 @@
 !(function (window, document) {
 
         let __log = (elementName, background, a = '', b = '', c = '', d = '', e = '', f = '', g = '', h = '') => {
-//            console.log(`%cWC:${elementName}:`, 'background:' + background, a, b, c, d, e, f, g, h);
+            console.log(`%cWC:${elementName}:`, 'background:' + background, a, b, c, d, e, f, g, h);
         };
 
-        let heartbeat_seconds = 1000;
+        let heartbeat_seconds = 0;
 
         let __ITpings_SQL_result = 'result';
 
@@ -191,7 +191,17 @@
                                     _wc.timeout_id = setTimeout(() => {
                                         _wc.doPulse();
                                     }, heartbeat_seconds);
+                                } else {
+                                    let query = _wc[__ATTR_data_query];
+                                    let src = `<b><a href=?query='${query}'>${query}</a></b>`;
+                                    let DIV = __createElement__DIV(src + ' is not a valid ITpings result source');
+                                    __classList_add(DIV, 'itpings-table-error');
+                                    __appendChild(_wc, DIV);
                                 }
+                            })
+                            .catch(error => {
+                                console.error(error);
+                                _wc.innerHTML = error;
                             });
                     }
                 }

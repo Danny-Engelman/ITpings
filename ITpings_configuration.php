@@ -3,7 +3,6 @@ include('ITpings_access_database.php');
 
 //region ===== APPLICATION DEVELOPMENT ============================================================
 
-// one scrollable TBODY with max-height
 // viz.js
 // graph RSSI/SNR
 // View Pings (use PingedGateways)
@@ -427,6 +426,7 @@ $_VALID_QUERY_PARAMETERS = [
 
 //PREDEFINED QUERIES
 define('SQL_QUERY_ApplicationDevices', 'Devices');
+define('SQL_QUERY_DatabaseInfo', 'DBInfo');
 
 
 //endregion == DATABASE SCHEMA AND CONFIGURATION ==================================================

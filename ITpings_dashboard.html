@@ -146,6 +146,13 @@
             background:lightcoral;
             color:yellow;
         }
+
+        /* overrule max-height setting and show full table for tables with 'noscroll' attribute */
+        itpings-table[noscroll] .table-wrapper{
+            max-height: initial;
+            overflow-x: initial;
+            overflow-y: initial;
+        }
     </style>
     <style id="Color new Pings">
         itpings-table TBODY:nth-child(odd) {
@@ -250,7 +257,7 @@
     <tbody>
     <tr>
         <td>
-            <itpings-table query="DBInfo" title="ITpings Database Info"></itpings-table>
+            <itpings-table query="DBInfo" title="ITpings Database Info" noscroll refreshall></itpings-table>
             <itpings-table query="applications" title="All Applications"></itpings-table>
             <itpings-table query="Devices" title="All Devices"></itpings-table>
             <itpings-table query="Events" title="ITpings Events"></itpings-table>

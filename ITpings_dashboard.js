@@ -4,7 +4,9 @@
             console.log(`%cWC:${elementName}:`, 'background:' + background, a, b, c, d, e, f, g, h);
         };
 
-        let heartbeat_seconds = 0;
+        let heartbeat_seconds;
+        heartbeat_seconds = 1000;
+        heartbeat_seconds = false;
 
         let __ITpings_SQL_result = 'result';
 
@@ -219,6 +221,7 @@
 
                 doPulse() {
                     let _wc = this;
+                    _log(_wc.getAttribute('refreshall'), _wc.getAttribute('refreshall') ? '21' : '22');
                     if (heartbeat_seconds) {
                         clearTimeout(_wc.timeout_id);
                         _log('doPulse NOW', heartbeat_seconds, _wc.idfield, _wc.maxid, _wc.query);

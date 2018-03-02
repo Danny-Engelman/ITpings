@@ -45,6 +45,8 @@ if (mysqli_connect_errno()) {
 $JSON_response = array();
 $JSON_response['ip'] = PING_ORIGIN;
 $JSON_response['mysqlversion'] = mysqli_get_server_info($MySQL_DB_Connection);
+$JSON_response['data_default_timezone'] = date_default_timezone_get();
+$JSON_response['timezone'] = ini_get('date.timezone');
 $JSON_response['sql'] = FALSE;
 $JSON_response['result'] = FALSE;
 
@@ -1055,13 +1057,13 @@ function process_Predefined_Query()
             }
             break;
         case SQL_QUERY_DatabaseInfo: // query=DBInfo
-            $sql = "SELECT REPLACE(S.TABLE_NAME,'" . TABLE_PREFIX . "%','') AS `Table`";
+            $sql = "SELECT REPLACE(S.TABLE_NAME,'" . TABLE_PREFIX . "','') AS 'Table'";
             $sql .= ",S.TABLE_ROWS AS Rows";
             $sql .= ",S.AVG_ROW_LENGTH AS RowLength, S.DATA_LENGTH AS DataLength";
             $sql .= ",S.INDEX_LENGTH AS IndexLength,S.DATA_FREE AS Free";
-            $sql .= " FROM information_schema.tables S ";
-            $sql .= " WHERE table_name LIKE `" . TABLE_PREFIX . "%`";
-            $sql .= " AND TABLE_TYPE = `BASE TABLE`";
+            $sql .= " FROM information_schema.tables S";
+            $sql .= " WHERE table_name LIKE '" . TABLE_PREFIX . "%'";
+            $sql .= " AND TABLE_TYPE = 'BASE TABLE'";
             $sql .= " ORDER BY TABLE_NAME ASC";
             break;
     }

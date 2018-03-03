@@ -2,9 +2,9 @@
 
 ITpings can be used by both beginner and advanced developers.
 
-* ITpings Is the [HTTP Integration](https://www.thethingsnetwork.org/docs/applications/http/) from The Things Network to your own MySQL database
+* ITpings Is the PHP [HTTP Integration](https://www.thethingsnetwork.org/docs/applications/http/) from The Things Network to your own MySQL database
 * ITpings Creates the (normalized) MySQL Database Schema for you
-* ITpings Is the (simple) Dashboard API for your Web Front-end 
+* ITpings Is the (simple) Dashboard API for your Web Front-end (written in ES6, so Chrome only for now) 
 
 **Alternative technologies:**
 
@@ -32,17 +32,17 @@ If you want screenshots, see [the 5 steps in detail](./documentation/ITpings_5_s
 4. Create a HTTP Integration in the The Things Network Application console  
 pointing to the ``YOURWEBSERVER/ITpings_connector.php?key=YOURKEY``    
   **Yes! That is it!**  
-ITpings will create the Database Schema once it receives a first Ping
+ITpings will create the Database Schema once it receives the first (HTTP Integration) Ping
 
 5. Now open ``ITpings_dashboard.html`` on your WebServer
 
 ## Why ITpings was created
 
-My (TTN) The Things Network Gateway and 2 handfull of TTN Nodes arrived late december 2017.  
-UART is nothing but a 4 letter acronym to me, so I spent the Holidays playing with all Software related technologies.  
+My [(TTN) The Things Network](https://www.thethingsnetwork.org/) [Gateway](https://www.thethingsnetwork.org/docs/gateways/) and 2 handfull of [TTN Nodes](https://www.thethingsnetwork.org/docs/devices/node/) arrived late december 2017.  
+I am not a Hardware Guy, UART is nothing but a 4 letter acronym to me, so I spent the Holidays playing with all Software related technologies.  
 
 I have been a script kiddie since learning BASIC in the late 70s, hardware just is not my _**thing**_  
-For me, every new project is a challenge to [think different](https://www.youtube.com/watch?v=4HsGAc0_Y5c) (a 15 minute must see).
+For me, every new project is a challenge to [think different](https://www.youtube.com/watch?v=4HsGAc0_Y5c).
 
 myDevices, Amazon Web Services, IBM's Node-Red and several more are by themselves great technologies to get started.
 
@@ -57,25 +57,21 @@ But did not meet my growing list of requirements:
 From a simple SPA page it evolved into a labour of love, especially since I always try to develop by the _'Use only necessary dependencies'_ rule.
 So I ditched React and Angular, considered Vue, and eventually went with Native ES6 WebComponents 
 (Hey! I am in charge now, using ES6, so **my** Dashboard does **not** work in crappy old-fashioned browsers )
-For simplicity sake I didn't going fancy with NodeJS, socket.io and loads more dependencies;  
-ITpings is just PHP,SQL and HTML5 (ES6) 
+For simplicity sake I didn't go fancy with NodeJS, socket.io and loads more dependencies;  
+ITpings is just PHP,SQL and HTML5 (ES6) So runs on any xxMP stack. 
 
 I hereby donate her with an MIT License to the Open Source community,
 
 _**... be gentle but just with her**_   
 
-## Quotes
-
-
-
-
-
-[*during the production of this product no dolphins were harmed*]
 ## (My)SQL Database schema
 
-Normalized for usability (Boyce-Codd or 5th is something for the future)
+Normalized for usability 
 
-![](https://i.imgur.com/dTlBzVQ.jpg)
+![](https://i.imgur.com/4frw9E1.jpg)
+
+All **Tables** start with lowercase letters, ITpings creates **Views** with Capitals:
+
 
 ### Future enhancements
 

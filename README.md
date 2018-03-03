@@ -68,7 +68,7 @@ _**... be gentle but just with her**_
 
 Normalized for usability 
 
-![](https://i.imgur.com/4frw9E1.jpg)
+![](https://i.imgur.com/R4qTVPu.jpg)
 
 All **Tables** start with lowercase letters, ITpings creates **Views** with Capitals:
 

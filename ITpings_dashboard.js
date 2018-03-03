@@ -5,8 +5,8 @@
         };
 
         let heartbeat_seconds;
-        heartbeat_seconds = 1000;
-        heartbeat_seconds = false;
+        heartbeat_seconds = 1500;
+        // heartbeat_seconds = false;
 
         let __ITpings_SQL_result = 'result';
 
@@ -90,6 +90,7 @@
         let __PROPERTY_innerHTML = 'innerHTML';
 
         (function (elementName = 'itpings-table') {
+            return;
             let _log = (a, b, c, d, e, f, g, h) => __log(elementName, 'lightgreen', a, b, c, d, e, f, g, h);
 
             let _HEADmarker = 'h';
@@ -248,6 +249,7 @@
                 connectedCallback() {
                     //_log('connectedCallback');
                     let _wc = this;
+//                    _wc.innerHTML = 'Loading ....';
                     _wc.TABLEWRAPPER = __createElement__DIV();
                     _wc.TABLE = __appendChild(__createDocumentFragment(), __createElement__TABLE());        // new TABLE (as fragment)
                     let section = x => __appendChild(_wc.TABLE, __createElement(x));
@@ -354,27 +356,27 @@
                     [...this.INTERVALS.children].map(E => E.classList[E === intervalDIV ? 'add' : 'remove']('selectedInterval'));
 
                     __setAttribute(this, __ATTR_data_interval, newValue);
-                    _wc.displayChart(false);
+                    _wc.prepareChart(false);
                 }
 
                 //endregion
 
-                displayChart(localStorage_interval = false) {
+                prepareChart(localStorage_interval = false) {
                     let _wc = this;
                     let sensorname = _wc.sensorname;
                     if (localStorage_interval) {
-                        // interval = Number(localStorage_interval.match(/\d+/g)[0]);
-                        // intervalunit = localStorage_interval.match(/[a-zA-Z]+/g)[0];
                         _wc.interval = localStorage_interval;
                     }
                     let _interval_key = _wc.interval;
                     let _interval = __INTERVALS[_interval_key];
                     if (!_interval) _interval = __INTERVALS['H6'];
-                    _log('displayChart _interval', _interval_key, _interval);
+                    _log('prepareChart _interval', _interval_key, _interval, localStorage_interval ? 'localStorage' : '');
+                    _wc._interval = _interval;
+
                     let uri = __localPath('SensorValues&sensorname=' + sensorname
                         + '&orderby=created&interval=' + _interval.interval
                         + '&intervalunit=' + _interval.unit + '&limit=none');
-                    // _log('displayChart', uri);
+                    _log('prepareChart', uri);
 
                     if (_wc.chart) _wc.chart.destroy();
                     let chart = _wc.chart = new Chart(_wc.CANVAS, {
@@ -394,6 +396,16 @@
                             }
                         }
                     });
+                    _wc.ChartJS = {
+
+                    };
+                    _wc.updateChart(uri);
+                }
+
+                updateChart(uri) {
+                    let _wc = this;
+                    let _interval = _wc._interval;
+                    let chart = _wc.chart;
                     fetch(uri)
                         .then(response => response.json())
                         .then(json => {
@@ -450,22 +462,28 @@
                             chart.data.labels = chartdata.labels;
                             chart.data.datasets = chartdata.datasets;
                             chart.update();
+
+                            if (heartbeat_seconds) setTimeout(function () {
+                                _log('Update Chart', chart.id, uri);
+                                //_wc.chart.update();
+                                _wc.updateChart(uri);
+                            }, heartbeat_seconds);
+
                         });
                 }
 
                 constructor() {
                     super();
-                    this.chartID = false;
                 }
 
                 attributeChangedCallback(attr, oldValue, newValue) {
                     let _wc = this;
-                    _log('attributeChanged:', attr + ' / ' + oldValue + ' / ' + newValue, _wc.isConnected ? 'connected!' : 'not! connected');
+                    // _log('attributeChanged:', attr + ' / ' + oldValue + ' / ' + newValue, _wc.isConnected ? 'connected!' : 'not! connected');
                     switch (attr) {
                         case(__ATTR_data_interval):
                             if (_wc.isConnected) {
                                 _log('attributeChanged (Connected):', attr + ' / ' + oldValue + ' / ' + newValue);
-                                //_wc.displayChart(false);
+                                //_wc.prepareChart(false);
                             }
                             break;
                         default:
@@ -513,10 +531,6 @@
                     } else {
                         console.error('no id on chart', _wc);
                     }
-
-                    // if (heartbeat_seconds) setTimeout(function () {
-                    //     _log('Update Chart');
-                    // }, 1000);
                 }
 
                 disconnectedCallback() {

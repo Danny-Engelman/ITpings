@@ -1,23 +1,9 @@
-While most are working on the techie side
-
-For me UART is nothing but a 4 letter acronym.
-
-Staying awake to watch the TTN console might have been an option if I were 25 years younger.
-
-I worked with Macromedia Authorware for 15 years, so I understand the power of GUI development tools.
-
-There is a reason why CLI is the (hyped)term the past years 
-
-For simplicity sake I am not going fancy with NodeJS, socket.io and loads more dependencies 
-
-Focus is on Database and Front-end
-
 # ITpings - '_Just Give Me The Data_'
 
 ITpings can be used by both beginner and advanced developers.
 
 * ITpings Is the [HTTP Integration](https://www.thethingsnetwork.org/docs/applications/http/) from The Things Network to your own MySQL database
-* ITpings Creates the MySQL Database Tables for you
+* ITpings Creates the (normalized) MySQL Database Schema for you
 * ITpings Is the (simple) Dashboard API for your Web Front-end 
 
 **Alternative technologies:**
@@ -36,6 +22,7 @@ Reading this README (before diving head in first) will give you more insight in 
 If you still want to get started now,  
 ### Install and Configure ITpings in 5 steps: 
 
+If you want screenshots, see [the 5 steps in detail](./documentation/ITpings_5_step_configuration.md)
 
 1. Create a 'ITpings' Database in your MySQL server
 2. Edit the file ``ITpings_access_database.php``
@@ -51,8 +38,8 @@ ITpings will create the Database Schema once it receives a first Ping
 
 ## Why ITpings was created
 
-My (TTN) The Things Network Gateway and 2 handfull of TTN Nodes arrived late december 2017;  
-so I spent the Holidays playing with all Software related technologies.  
+My (TTN) The Things Network Gateway and 2 handfull of TTN Nodes arrived late december 2017.  
+UART is nothing but a 4 letter acronym to me, so I spent the Holidays playing with all Software related technologies.  
 
 I have been a script kiddie since learning BASIC in the late 70s, hardware just is not my _**thing**_  
 For me, every new project is a challenge to [think different](https://www.youtube.com/watch?v=4HsGAc0_Y5c) (a 15 minute must see).
@@ -68,11 +55,19 @@ But did not meet my growing list of requirements:
 * Issue an alarm when a device was not seen for over an hour 
 
 From a simple SPA page it evolved into a labour of love, especially since I always try to develop by the _'Use only necessary dependencies'_ rule.
-So I ditched React and Angular, considered Vue, and eventually went with Native ES6 WebComponents (Hey! I am in charge now, using ES6, so my Dashboard does not work in crappy old-fashioned browsers )
+So I ditched React and Angular, considered Vue, and eventually went with Native ES6 WebComponents 
+(Hey! I am in charge now, using ES6, so **my** Dashboard does **not** work in crappy old-fashioned browsers )
+For simplicity sake I didn't going fancy with NodeJS, socket.io and loads more dependencies;  
+ITpings is just PHP,SQL and HTML5 (ES6) 
 
-I hereby give donate her with an MIT License to the Open Source community,
+I hereby donate her with an MIT License to the Open Source community,
 
-**... be gentle but just with her**   
+_**... be gentle but just with her**_   
+
+## Quotes
+
+
+
 
 
 [*during the production of this product no dolphins were harmed*]
@@ -84,8 +79,6 @@ Normalized for usability (Boyce-Codd or 5th is something for the future)
 
 ### Future enhancements
 
-* Normalize all ``ping.meta_*`` fields to separate tables.
-* Purge old information like ``downlink_url`` and ``payload_raw`` 
 
 ### MySQL Database management alternatives
 
@@ -117,3 +110,8 @@ Before using ITpings in a production environment, you may want to read [Why Buil
 ### MomentJS versus Date-Fns
 
 ChartJS works on top of MomentJS, otherwise switch to more modern Date-fns
+
+## Todo
+
+* one-click Drop/Create database
+* JS console CLI?

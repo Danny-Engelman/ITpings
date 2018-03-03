@@ -28,7 +28,7 @@
         .table-wrapper {
             margin-bottom: 1em;
             border: 1px solid green;
-            max-height: 10em;
+            max-height: 15em;
             overflow-x: hidden;
             overflow-y: auto;
         }
@@ -143,15 +143,46 @@
         }
 
         .itpings-table-error {
-            background:lightcoral;
-            color:yellow;
+            background: lightcoral;
+            color: yellow;
         }
 
         /* overrule max-height setting and show full table for tables with 'noscroll' attribute */
-        itpings-table[noscroll] .table-wrapper{
+        itpings-table[noscroll] .table-wrapper {
             max-height: initial;
             overflow-x: initial;
             overflow-y: initial;
+        }
+    </style>
+    <style>
+        .overflow-scroll-gradient {
+            position: relative;
+        }
+
+        .overflow-scroll-gradient::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            width: 300px;
+            height: 25px;
+            background: linear-gradient(rgba(255, 255, 255, 0.001), white); /* transparent keyword is broken in Safari */
+            pointer-events: none;
+        }
+
+        .overflow-scroll-gradient__scroller {
+            overflow-y: scroll;
+            background: white;
+            width: 300px;
+            height: 250px;
+            padding: 15px 0;
+            line-height: 1.2;
+            text-align: center;
+        }
+
+        .truncate-text {
+            overflow: hidden;
+            white-space: nowrap;
+            text-overflow: ellipsis;
         }
     </style>
     <style id="Color new Pings">
@@ -267,6 +298,7 @@
         </td>
         <td>
             <itpings-chart chartid="temperature" sensorname="temperature_5" interval="H2"></itpings-chart>
+            <itpings-chart chartid="luminosity" sensorname="luminosity_6" interval="H6"></itpings-chart>
         </td>
     </tr>
     <tr>
@@ -275,7 +307,6 @@
             <itpings-table query="Gateways" title="All Gateways"></itpings-table>
         </td>
         <td>
-            <itpings-chart chartid="luminosity" sensorname="luminosity_6" interval="H6"></itpings-chart>
         </td>
     </tr>
 

@@ -28,6 +28,11 @@ function is_Location_without_Decimals($lat, $lon)
     return (floor($lat) == $lat AND floor($lon) == $lon);
 }
 
+function shortenTableName($table)
+{
+    return str_replace(TABLE_PREFIX, '', $table);
+}
+
 //endregion == HELPER FUNCTIONS ===================================================================
 
 //region ===== MYSQL DATABASE ACCESS ==============================================================
@@ -46,7 +51,11 @@ $JSON_response = array();
 $JSON_response['ip'] = PING_ORIGIN;
 $JSON_response['mysqlversion'] = mysqli_get_server_info($MySQL_DB_Connection);
 $JSON_response['data_default_timezone'] = date_default_timezone_get();
-$JSON_response['timezone'] = ini_get('date.timezone');
+//$JSON_response['timezone'] = ini_get('date.timezone');
+$JSON_response['maxids'] = FALSE;
+$JSON_response['rowcount'] = 0;
+$JSON_response['maxrows'] = FALSE;
+$JSON_response['skipcount'] = 0;
 $JSON_response['sql'] = FALSE;
 $JSON_response['result'] = FALSE;
 
@@ -54,6 +63,49 @@ function return_JSON_response()
 {
     global $JSON_response;
     print json_encode($JSON_response);
+}
+
+function skip_every_Nth_row_From_SQL_result($result, $maxrows)
+{
+    global $JSON_response;
+    /**
+     * It is faster to filter with PHP for the SQL result on every Nth row,
+     * doing it with SQL takes twice as much time
+     **/
+    //SELECT *
+    //FROM (
+    //    SELECT
+    //        @row := @row +1 AS rownum, _pingid
+    //    FROM (
+    //        SELECT @row :=0) r, ITpings__SensorValues
+    //    ) ranked
+    //WHERE rownum % 4 = 1
+
+    $rows = array();
+
+    $rowcount = mysqli_num_rows($result);
+
+    $JSON_response['maxrows'] = (int)$maxrows;
+    $Nth_row = ceil($rowcount / $maxrows);// to do: offset error, maxrows=200 returns 199, make sure first and last row element are always added
+    $rowcount = 0;
+    $skipped_rowcount = 0;
+    $index = 0;
+    $lastrow;
+    while ($row = mysqli_fetch_assoc($result)) {
+        $this_is_Nth_row = ($index % $Nth_row) === 0;
+        if ($this_is_Nth_row) {
+            $rows[] = $row;
+            $rowcount++;
+        } else {
+            $skipped_rowcount++;
+        }
+        $lastrow = $row;    // bug: rowcount and skipped_rowcount is 1 off when the lastrow === Nth row
+        $index++;
+    }
+    $rows[] = $lastrow;
+    $JSON_response['skipcount'] = $skipped_rowcount;
+
+    return $rows;
 }
 
 /**
@@ -66,22 +118,31 @@ function SQL_Query($sql, $returnJSON = FALSE)
 {
     global $MySQL_DB_Connection;
     global $JSON_response;
+    global $QueryStringParameters;
 
-    $JSON_response['sql'] = str_replace(TABLE_PREFIX, '', $sql);
+    $JSON_response['sql'] = shortenTableName($sql);
 
     $result = mysqli_query($MySQL_DB_Connection, $sql);
     if ($result) {
         if ($returnJSON) {
+            $maxrows = $QueryStringParameters['maxrows'];
             $rows = array();
-            while ($row = mysqli_fetch_assoc($result)) {
-                $rows[] = $row;
+            if ($maxrows) {
+                $rows = skip_every_Nth_row_From_SQL_result($result, $maxrows);
+            } else {
+                while ($row = mysqli_fetch_assoc($result)) {
+                    $rows[] = $row;
+                }
             }
+            $JSON_response['rowcount'] = sizeof($rows);
+
             // http://nitschinger.at/Handling-JSON-like-a-boss-in-PHP/
             //header('Content-type: application/json');
+
             $JSON_response['result'] = $rows;
             return_JSON_response();
         } else {
-            return (gettype($result) === 'boolean') ? $result : mysqli_fetch_assoc($result); // return first $row
+            return (gettype($result) === 'boolean') ? $result : mysqli_fetch_assoc($result); // return boolean OR first $row
         }
     } else {
         $JSON_response += array('error' => mysqli_error($MySQL_DB_Connection));
@@ -184,6 +245,7 @@ function Valued($val)
 
 function create_ITpings_Tables()
 {
+    //bit dirty, in strict PHP defines can not be Arrays, so they (arrays) are declared as Global variables
     global $_DBFIELD_EVENTTYPE;
     global $_DBFIELD_EVENTLABEL;
     global $_DBFIELD_EVENTVALUE;
@@ -353,6 +415,7 @@ function create_ITpings_Tables()
         , [$_DBFIELD_LATITUDE
             , $_DBFIELD_LONGITUDE
             , $_DBFIELD_ALTITUDE
+            //, $_DBFIELD_HDOP
             , $_DBFIELD_LOCATION_SOURCE
         ]
         , NO_FOREIGNKEYS
@@ -476,7 +539,7 @@ function create_ITpings_Views()
                 break;
             case VIEWNAME_SENSORVALUES:
                 $view .= " P." . PRIMARYKEY_Ping . " , P." . ITPINGS_CREATED_TIMESTAMP;
-                $view .= " , S." . PRIMARYKEY_Sensor;
+                $view .= " , SV." . PRIMARYKEY_Sensor;
                 $view .= " , AD." . PRIMARYKEY_ApplicationDevice . " , AD." . ITPINGS_APPLICATION_ID . " , AD." . ITPINGS_DEVICE_ID;
                 //$view .= " , AD." . ITPINGS_HARDWARE_SERIAL;
                 $view .= " , S." . ITPINGS_SENSORNAME;
@@ -485,6 +548,19 @@ function create_ITpings_Views()
                 $view .= " JOIN " . TABLE_SENSORS . " S ON S." . PRIMARYKEY_Sensor . " = SV." . PRIMARYKEY_Sensor;
                 $view .= " JOIN " . TABLE_PINGS . " P ON P." . PRIMARYKEY_Ping . " = SV." . PRIMARYKEY_Ping;
                 $view .= " JOIN " . VIEWNAME_APPLICATIONDEVICES . " AD ON AD." . PRIMARYKEY_ApplicationDevice . " = S." . PRIMARYKEY_ApplicationDevice;
+                $view .= " ORDER BY " . ITPINGS_CREATED_TIMESTAMP . " DESC, SV." . PRIMARYKEY_Sensor;
+                break;
+            case VIEWNAME_SENSORVALUES_UPDATE:// less JOINs = faster
+                $view .= " P." . PRIMARYKEY_Ping . " , P." . ITPINGS_CREATED_TIMESTAMP;
+                $view .= " , SV." . PRIMARYKEY_Sensor;
+                //$view .= " , AD." . PRIMARYKEY_ApplicationDevice . " , AD." . ITPINGS_APPLICATION_ID . " , AD." . ITPINGS_DEVICE_ID;
+                //$view .= " , AD." . ITPINGS_HARDWARE_SERIAL;
+                //$view .= " , S." . ITPINGS_SENSORNAME;
+                $view .= " , SV." . ITPINGS_SENSORVALUE;
+                $view .= " FROM " . TABLE_SENSORVALUES . " SV ";
+                //$view .= " JOIN " . TABLE_SENSORS . " S ON S." . PRIMARYKEY_Sensor . " = SV." . PRIMARYKEY_Sensor;
+                $view .= " JOIN " . TABLE_PINGS . " P ON P." . PRIMARYKEY_Ping . " = SV." . PRIMARYKEY_Ping;
+                //$view .= " JOIN " . VIEWNAME_APPLICATIONDEVICES . " AD ON AD." . PRIMARYKEY_ApplicationDevice . " = S." . PRIMARYKEY_ApplicationDevice;
                 $view .= " ORDER BY " . ITPINGS_CREATED_TIMESTAMP . " DESC, SV." . PRIMARYKEY_Sensor;
                 break;
             case VIEWNAME_GATEWAYS:
@@ -734,6 +810,7 @@ function process_Ping_and_Gateway_Location($lat, $lon, $alt, $location_source)
 {
     global $request;
 
+    //hardcoded! for now
     if ($location_source === 'registry') {
         $location_source = 1;
     } else {
@@ -753,6 +830,7 @@ function process_Ping_and_Gateway_Location($lat, $lon, $alt, $location_source)
             , $lat
             , $lon
             , $alt
+            //, $HDOP
             , $location_source
         ]);
         insert_TTN_Event(ENUM_EVENTTYPE_NewLocation, $lat, $lon);
@@ -829,10 +907,12 @@ function process_SingleGateway($gateway)
 
     if ($table_row) {// found a Gateway
         $key_id = $table_row[PRIMARYKEY_Gateway];
+        //$eventvalue = json_encode($gateway);
+        $eventvalue = $request_GateWay_ID;
         if (!$lat) {
-            insert_TTN_Event(ENUM_EVENTTYPE_Log, "Gateway without location", json_encode($gateway));
+            insert_TTN_Event(ENUM_EVENTTYPE_Log, "Gateway without location", $eventvalue);
         } else if (is_Location_without_Decimals($lat, $lon)) {
-            insert_TTN_Event(ENUM_EVENTTYPE_Log, "Suspicious lat/lon location: $lat / $lon", json_encode($gateway));
+            insert_TTN_Event(ENUM_EVENTTYPE_Log, "Suspicious lat/lon location: $lat / $lon", $eventvalue);
         }
     } else {
         //record a New Gateway
@@ -1030,12 +1110,57 @@ function process_Sensors_From_PayloadFields()
 
 //region ===== PROCESS GET QUERY ==================================================================
 
+/**
+ * create a JSON structure with the most recent PrimaryKey value for Tables and Views
+ * The Browser polls this endpoint and thus only updates HTML Tables/Graphs when there is NEW data
+ */
+function attach_Max_IDs_to_JSON_response()
+{
+    global $JSON_response;
+
+    $JSON_response['maxids'] = array();
+
+    function MAXID($table, $key, $value = false)
+    {
+        global $JSON_response;
+
+        if ($value === FALSE) {
+            $value = SQL_Query("SELECT MAX($key) AS mx FROM $table")['mx'];
+        }
+
+        $table = shortenTableName($table);
+
+        if (!isset($JSON_response['maxids'][$table])) $JSON_response['maxids'][$table] = [];
+        $JSON_response['maxids'][$table][$key] = (int)$value;
+
+        return $value;
+    }
+
+    //to do: clean up, make generic for any query
+    MAXID(TABLE_APPLICATIONS, PRIMARYKEY_Application);
+    MAXID(TABLE_DEVICES, PRIMARYKEY_Device);
+    $event_pingid = MAXID(TABLE_EVENTS, PRIMARYKEY_Ping);
+    $gtwid = MAXID(TABLE_GATEWAYS, PRIMARYKEY_Gateway);
+    MAXID(TABLE_LOCATIONS, PRIMARYKEY_Location);
+    $pingid = MAXID(TABLE_PINGS, PRIMARYKEY_Ping);
+    MAXID(TABLE_SENSORS, PRIMARYKEY_Sensor);
+
+    //reuse already found ids
+    MAXID(VIEWNAME_SENSORVALUES, PRIMARYKEY_Ping, $pingid);
+    MAXID(VIEWNAME_PINGEDGATEWAYS, PRIMARYKEY_Ping, $pingid);
+    MAXID(VIEWNAME_EVENTS, PRIMARYKEY_Ping, $event_pingid);
+    MAXID(VIEWNAME_GATEWAYS, PRIMARYKEY_Gateway, $gtwid);
+
+}
+
 function process_Predefined_Query()
 {
-    global $urlVars;
+    global $JSON_response;
+    global $QueryStringParameters;
+
     $sql = EMPTY_STRING;
 
-    switch ($urlVars['query']) {
+    switch ($QueryStringParameters['query']) {
         case SQL_QUERY_ApplicationDevices: // query=Devices
             $sql = "SELECT AD." . PRIMARYKEY_ApplicationDevice;
             $sql .= " ,AD." . ITPINGS_APPLICATION_ID;
@@ -1052,11 +1177,13 @@ function process_Predefined_Query()
             $sql .= " GROUP BY " . PRIMARYKEY_ApplicationDevice;
             $sql .= " ) LSV";
             $sql .= " WHERE AD." . PRIMARYKEY_ApplicationDevice . " = LSV." . PRIMARYKEY_ApplicationDevice;
-            if ($urlVars[QUERY_PARAMETER_FILTER]) {
-                $sql .= process_QueryParameter_Filter('', ' AND AD.', $urlVars[QUERY_PARAMETER_FILTER]);
+            if ($QueryStringParameters[QUERY_PARAMETER_FILTER]) {
+                $sql .= process_QueryParameter_Filter('', ' AND AD.', $QueryStringParameters[QUERY_PARAMETER_FILTER]);
             }
             break;
         case SQL_QUERY_DatabaseInfo: // query=DBInfo
+            attach_Max_IDs_to_JSON_response();
+
             $sql = "SELECT REPLACE(S.TABLE_NAME,'" . TABLE_PREFIX . "','') AS 'Table'";
             $sql .= ",S.TABLE_ROWS AS Rows";
             $sql .= ",S.AVG_ROW_LENGTH AS RowLength, S.DATA_LENGTH AS DataLength";
@@ -1065,6 +1192,13 @@ function process_Predefined_Query()
             $sql .= " WHERE table_name LIKE '" . TABLE_PREFIX . "%'";
             $sql .= " AND TABLE_TYPE = 'BASE TABLE'";
             $sql .= " ORDER BY TABLE_NAME ASC";
+            break;
+        case SQL_QUERY_RecentIDs: // query=IDs   // all relevant IDs , smallest JSON payload as possible
+            attach_Max_IDs_to_JSON_response();
+            $sql = NO_SQL_QUERY;
+            break;
+        case SQL_QUERY_RecentPingID: // query=PingID   // smallest JSON payload as possible, single pingID
+            exit(SQL_Query("SELECT MAX(" . PRIMARYKEY_Ping . ") AS ID FROM " . TABLE_PINGS)['ID']);
             break;
     }
 
@@ -1085,9 +1219,23 @@ function process_QueryParameter_Filter($where, $and, $parameter_value)
         elseif ($operator === 'gt') $where .= " > ";
         elseif ($operator === 'ge') $where .= " >= ";
         elseif ($operator === 'le') $where .= " <= ";
+        elseif ($operator === 'eq') $where .= "=";
         $where .= $value;
+        $and = ' AND ';
     }
     return $where;
+}
+
+/**
+ * For debugging purposes, add data to the JSON output
+ * @param $key
+ * @param $value
+ */
+function QueryTrace($key, $value)
+{
+    global $JSON_response;
+    if (!isset($JSON_response['QueryTrace'])) $JSON_response['QueryTrace'] = [];
+    $JSON_response['QueryTrace'][$key] = $value;
 }
 
 /**
@@ -1095,15 +1243,22 @@ function process_QueryParameter_Filter($where, $and, $parameter_value)
  */
 function process_Query_with_QueryString_Parameters()
 {
-    global $urlVars;
+    global $QueryStringParameters;
     global $JSON_response;
     $sql = EMPTY_STRING;
 
-    $queryName = $urlVars['query'];
+    $queryName = $QueryStringParameters['query'];
     $table_name = TABLE_PREFIX . $queryName;
 
     /** User can only request for limitted table/view names, this is the place to deny access to some Tables **/
     switch ($table_name) {
+        case VIEWNAME_SENSORVALUES:
+        case VIEWNAME_SENSORVALUES_UPDATE:
+        case VIEWNAME_EVENTS:
+        case VIEWNAME_PINGEDGATEWAYS:
+        case VIEWNAME_GATEWAYS:
+        case VIEWNAME_APPLICATIONDEVICES:
+
         case TABLE_EVENTS:
         case TABLE_POSTREQUESTS:
         case TABLE_APPLICATIONS:
@@ -1114,11 +1269,7 @@ function process_Query_with_QueryString_Parameters()
         case TABLE_PINGEDGATEWAYS:
         case TABLE_SENSORS:
         case TABLE_SENSORVALUES:
-        case VIEWNAME_EVENTS:
-        case VIEWNAME_SENSORVALUES:
-        case VIEWNAME_GATEWAYS:
-        case VIEWNAME_PINGEDGATEWAYS:
-        case VIEWNAME_APPLICATIONDEVICES:
+
             break;
         default:
             $sql = process_Predefined_Query();
@@ -1135,19 +1286,21 @@ function process_Query_with_QueryString_Parameters()
         $order = EMPTY_STRING;
         $limit = EMPTY_STRING;
         foreach ($_VALID_QUERY_PARAMETERS as $parameter) {
-            $parameter_value = SQL_InjectionSave_OneWordString($urlVars[$parameter]);
+            $parameter_value = SQL_InjectionSave_OneWordString($QueryStringParameters[$parameter]);
+            if (ITPINGS_QUERY_TRACE) QueryTrace($parameter, $parameter_value);
             if ($parameter_value) {
                 $PARAMETER_HAS_SEPARATOR = strpos($parameter_value, QUERY_PARAMETER_SEPARATOR) !== FALSE;
                 $and = $where === EMPTY_STRING ? EMPTY_STRING : " AND ";
                 switch ($parameter) {
 
                     case QUERY_PARAMETER_FILTER:
-                        $where .= process_QueryParameter_Filter($where, $and, $parameter_value);
+                        //do NOT add to $where, the function creates a new $where with previous content prepended
+                        $where = process_QueryParameter_Filter($where, $and, $parameter_value);
                         break;
 
                     case QUERY_PARAMETER_INTERVAL:
                         //https://dev.mysql.com/doc/refman/5.7/en/date-and-time-functions.html#function_date-add
-                        $interval_unit = strtoupper($urlVars[QUERY_PARAMETER_INTERVALUNIT]);
+                        $interval_unit = strtoupper($QueryStringParameters[QUERY_PARAMETER_INTERVALUNIT]);
                         if (!in_array($interval_unit, $_QUERY_ALLOWED_INTERVALUNITS)) {
                             $interval_unit = 'HOUR';
                         }
@@ -1189,11 +1342,12 @@ function process_Query_with_QueryString_Parameters()
 
                     default:
                         if ($PARAMETER_HAS_SEPARATOR) {
-                            $where .= $and . "$parameter IN(" . $parameter_value . ")";//todo allow for strings
+                            $where .= $and . "$parameter IN (" . $parameter_value . ")";//todo allow for strings
                         } else {
                             $parameter_value = (is_numeric($parameter_value) ? Valued($parameter_value) : Quoted($parameter_value));
                             $where .= $and . "$parameter = " . $parameter_value;
                         }
+                        if (ITPINGS_QUERY_TRACE) QueryTrace($parameter, $parameter_value);
                         break;
                 }
             }
@@ -1213,9 +1367,20 @@ function process_Query_with_QueryString_Parameters()
     }
     if ($sql === EMPTY_STRING) {
         $JSON_response['error'] = "Error: Empty SQL statement";
-
     } else {
-        SQL_Query($sql, TRUE);
+        if ($sql === NO_SQL_QUERY) {
+            unset($JSON_response['mysqlversion']);
+            unset($JSON_response['data_default_timezone']);
+            unset($JSON_response['ip']);
+            unset($JSON_response['rowcount']);
+            unset($JSON_response['maxrows']);
+            unset($JSON_response['skipcount']);
+            unset($JSON_response['result']);
+            unset($JSON_response['sql']);
+            return_JSON_response();
+        } else {
+            SQL_Query($sql, TRUE);
+        }
     }
 }
 
@@ -1224,8 +1389,8 @@ function process_Query_with_QueryString_Parameters()
 //region ===== ITpings - MAIN CODE ================================================================
 
 //Process QueryString variables
-$urlVars = array();
-parse_str($_SERVER['QUERY_STRING'], $urlVars);
+$QueryStringParameters = array();
+parse_str($_SERVER['QUERY_STRING'], $QueryStringParameters);
 
 if (CREATE_DATABASE_ON_FIRST_PING) {
     $sql = "SELECT * FROM information_schema.tables WHERE table_name LIKE '" . TABLE_PREFIX . "%' ORDER BY TABLE_TYPE ASC";
@@ -1238,8 +1403,8 @@ if (CREATE_DATABASE_ON_FIRST_PING) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    if (YOUR_ITPINGS_KEY !== $urlVars['key']) {
-        echo "Invalid key" . $urlVars['key'] . ", 21 edit your ITpings_access_database.php file; " . YOUR_ITPINGS_KEY;
+    if (YOUR_ITPINGS_KEY !== $QueryStringParameters['key']) {
+        echo "Invalid key" . $QueryStringParameters['key'] . ", 21 edit your ITpings_access_database.php file; " . YOUR_ITPINGS_KEY;
     } else {
 
         $POST_body = trim(file_get_contents("php://input"));
@@ -1264,9 +1429,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo "ITpings recorded a ping: " . $request[PRIMARYKEY_Ping];
     }
 } else { // GET (JSON) request
-    switch ($urlVars['action']) {
+    switch ($QueryStringParameters['action']) {
         case 'drop':
-            if (YOUR_ITPINGS_KEY === $urlVars['key']) {
+            if (YOUR_ITPINGS_KEY === $QueryStringParameters['key']) {
                 foreach ($_ITPINGS_TABLES as $index => $table_name) {
                     $sql = "DROP TABLE IF EXISTS $table_name;";
                     echo $sql;

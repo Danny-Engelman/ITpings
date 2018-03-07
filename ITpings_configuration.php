@@ -31,7 +31,7 @@ define('SAVE_POST_AS_ONE_STRING', TRUE);
 define('GATEWAY_POSITION_TOLERANCE', '0.02');      // 20 Meter
 
 //default LIMIT when none is specified
-define('SQL_LIMIT_DEFAULT', 10);
+define('SQL_LIMIT_DEFAULT', 30);
 
 // field `downlink_url` is of no use once it can't be used anymore to downlink data to a Node
 // To save database space these fields can be reset to empty values
@@ -48,9 +48,12 @@ define('PURGE_PINGCOUNT', 60);
 // to supress reports for different Altitude for a given lat/lon location set to FALSE
 define('CHECK_ALTITUDE_IN_PING', TRUE);
 
+// add extra JSON output to trace what ITpings connector does
+// handy for debugging QueryString Parameters to SQL parser in connector.php
+define('ITPINGS_QUERY_TRACE', FALSE);
 
 // NOTE: PHP 5 requires Scalar variables in DEFINE statements, PHP7 accepts arrays
-// so $_ global variables can becomen proper defines in PHP 7
+// so $_ global variables can become proper defines in PHP 7
 
 //endregion == APPLICATION CONFIGURATION ==========================================================
 
@@ -59,16 +62,17 @@ define('CHECK_ALTITUDE_IN_PING', TRUE);
 /** ==> Creation of Tables and Views is in the ITpings_connector.php file **/
 
 // Prefix for Tables and Views
-// optional double underscore groups table list in PHPMyAdmin
+// optional double underscore groups table list in PHPMyAdmin, good for installing ITpings in an existing DB (like WordPress)
 define('TABLE_PREFIX', 'ITpings__');
 
 
-// Lookup Tables
+// Lookup Tables (result of normalizing the Database)
 define('TABLE_FREQUENCIES', TABLE_PREFIX . 'frequencies');
 define('TABLE_MODULATIONS', TABLE_PREFIX . 'modulations');
 define('TABLE_DATARATES', TABLE_PREFIX . 'datarates');
 define('TABLE_CODINGRATES', TABLE_PREFIX . 'codingrates');
 
+// GPS location, incl. alt and TTN location_source
 define('TABLE_LOCATIONS', TABLE_PREFIX . 'locations');
 
 // Main Tables
@@ -197,13 +201,16 @@ define('TTN_altitude', 'altitude');
 define('ITPINGS_ALTITUDE', 'alt');
 $_DBFIELD_ALTITUDE = [ITPINGS_ALTITUDE, 'DECIMAL(5,2)', 'TTN Ping Altitude'];        // centimeter accuracy up to 999,99
 
+define('ITPINGS_HDOP', 'HDOP');
+$_DBFIELD_HDOP = [ITPINGS_HDOP, 'TINYINT UNSIGNED', 'GPS accuracy'];        // centimeter accuracy up to 999,99
+
 define('TTN_gtw_trusted', 'gtw_trusted');
 define('ITPINGS_TRUSTED', 'trusted');
 $_DBFIELD_TRUSTED_GATEWAY = [ITPINGS_TRUSTED, 'TINYINT UNSIGNED NOT NULL DEFAULT 0', 'TTN Gateway Trusted']; // boolean
 
 define('TTN_location_source', 'location_source');
 define('ITPINGS_LOCATION_SOURCE', 'src');
-$_DBFIELD_LOCATION_SOURCE = [ITPINGS_LOCATION_SOURCE, 'TINYINT UNSIGNED', 'always registry?']; // ?? "registry" what else? // hardcoded as 1 in SQL code !!
+$_DBFIELD_LOCATION_SOURCE = [ITPINGS_LOCATION_SOURCE, TYPE_FOREIGNKEY_LOOKUPTABLE, 'always registry?']; // ?? "registry" what else? // hardcoded as 1 in SQL code !!
 
 define('TTN_timestamp', 'timestamp');
 define('ITPINGS_TIMESTAMP', 'timestamp');
@@ -220,7 +227,7 @@ $_DBFIELD_ITPINGS_TIME = [ITPINGS_TIME, 'DATETIME', TYPE_TIME_COMMENT];
 
 define('TTN_channel', 'channel');
 define('ITPINGS_CHANNEL', 'channel');
-$_DBFIELD_CHANNEL = [ITPINGS_CHANNEL, 'TINYINT UNSIGNED', 'TTN GatewayPing Channel'];       // ?? 0 - 7
+$_DBFIELD_CHANNEL = [ITPINGS_CHANNEL, TYPE_FOREIGNKEY_LOOKUPTABLE, 'TTN GatewayPing Channel'];       // ?? 0 - 7
 
 define('TTN_rssi', 'rssi');
 define('ITPINGS_RSSI', TTN_rssi);
@@ -232,11 +239,11 @@ $_DBFIELD_SNR = [ITPINGS_SNR, 'DECIMAL(4,2)', 'TTN GatewayPing SNR'];           
 
 define('TTN_rf_chain', 'rf_chain');
 define('ITPINGS_RFCHAIN', 'rfchain');
-$_DBFIELD_RFCHAIN = [ITPINGS_RFCHAIN, 'TINYINT UNSIGNED', '"TTN GatewayPing RFChain"'];     // ?? 0 or 1
+$_DBFIELD_RFCHAIN = [ITPINGS_RFCHAIN, TYPE_FOREIGNKEY_LOOKUPTABLE, '"TTN GatewayPing RFChain"'];     // ?? 0 or 1
 
 define('TTN_port', 'port');
 define('ITPINGS_PORT', TTN_port);
-$_DBFIELD_PORT = [ITPINGS_PORT, 'TINYINT UNSIGNED', ''];        // ?? always 1 ??
+$_DBFIELD_PORT = [ITPINGS_PORT, TYPE_FOREIGNKEY_LOOKUPTABLE, ''];        // ?? always 1 ??
 
 define('TTN_downlink_url', 'downlink_url');
 define('ITPINGS_DOWNLINKURL', 'downurl');
@@ -275,7 +282,7 @@ define('TTN_metadata', 'metadata');
 define('TTN_gateways', 'gateways');
 define('TTN_payload_fields', 'payload_fields');
 
-// Sensor names and values, key name in JSON payload
+// Sensor names = key name in JSON payload
 define('ITPINGS_SENSORNAME', 'sensorname');
 $_DBFIELD_SENSORNAME = [ITPINGS_SENSORNAME, 'VARCHAR(256)', "TTN Payload key"];    // ?? 256 enough?
 
@@ -285,15 +292,23 @@ $_DBFIELD_SENSORVALUE = [ITPINGS_SENSORVALUE, 'VARCHAR(1024)', 'TTN Payload valu
 /**
  * Foreign keys are not for performance,
  * they sure help with debugging,
- * and also cause headaches when you try to delete data
- **/
-$_FOREIGNKEY_APPLICATIONS = [PRIMARYKEY_Application, "REFERENCES " . TABLE_APPLICATIONS . " ( " . PRIMARYKEY_Application . ")"];
-$_FOREIGNKEY_DEVICES = [PRIMARYKEY_Device, "REFERENCES " . TABLE_DEVICES . " ( " . PRIMARYKEY_Device . ")"];
-$_FOREIGNKEY_APPLICATIONDEVICES = [PRIMARYKEY_ApplicationDevice, "REFERENCES " . TABLE_APPLICATIONDEVICES . " ( " . PRIMARYKEY_ApplicationDevice . ")"];
-$_FOREIGNKEY_PINGS = [PRIMARYKEY_Ping, "REFERENCES " . TABLE_PINGS . " ( " . PRIMARYKEY_Ping . ")"];
-$_FOREIGNKEY_GATEWAYS = [PRIMARYKEY_Gateway, "REFERENCES " . TABLE_GATEWAYS . " ( " . PRIMARYKEY_Gateway . ")"];
-$_FOREIGNKEY_SENSORS = [PRIMARYKEY_Sensor, "REFERENCES " . TABLE_SENSORS . " ( " . PRIMARYKEY_Sensor . ")"];
-$_FOREIGNKEY_LOCATIONS = [PRIMARYKEY_Location, "REFERENCES " . TABLE_LOCATIONS . " ( " . PRIMARYKEY_Location . ")"];
+ * but can also cause headaches when you try to delete data in the wrong order
+ * @param $key
+ * @param $table
+ * @return array
+ */
+function define_ForeignKey($key, $table)
+{
+    return [$key, "REFERENCES $table  ( $key )"];
+}
+
+$_FOREIGNKEY_APPLICATIONS = define_ForeignKey(PRIMARYKEY_Application, TABLE_APPLICATIONS);
+$_FOREIGNKEY_DEVICES = define_ForeignKey(PRIMARYKEY_Device, TABLE_DEVICES);
+$_FOREIGNKEY_APPLICATIONDEVICES = define_ForeignKey(PRIMARYKEY_ApplicationDevice, TABLE_APPLICATIONDEVICES);
+$_FOREIGNKEY_PINGS = define_ForeignKey(PRIMARYKEY_Ping, TABLE_PINGS);
+$_FOREIGNKEY_GATEWAYS = define_ForeignKey(PRIMARYKEY_Gateway, TABLE_GATEWAYS);
+$_FOREIGNKEY_SENSORS = define_ForeignKey(PRIMARYKEY_Sensor, TABLE_SENSORS);
+$_FOREIGNKEY_LOCATIONS = define_ForeignKey(PRIMARYKEY_Location, TABLE_LOCATIONS);
 //$_FOREIGNKEY_APPLICATIONS', FALSE);
 //$_FOREIGNKEY_DEVICES', FALSE);
 //$_FOREIGNKEY_APPLICATIONDEVICES', FALSE);
@@ -359,6 +374,7 @@ define('COMMA', ',');
 define('VIEWNAME_EVENTS', TABLE_PREFIX . 'Events');
 define('VIEWNAME_APPLICATIONDEVICES', TABLE_PREFIX . 'ApplicationDevices');
 define('VIEWNAME_SENSORVALUES', TABLE_PREFIX . 'SensorValues');
+define('VIEWNAME_SENSORVALUES_UPDATE', TABLE_PREFIX . 'SensorValuesUpdate'); // less JOINs, thus faster response
 define('VIEWNAME_GATEWAYS', TABLE_PREFIX . 'Gateways');
 define('VIEWNAME_PINGEDGATEWAYS', TABLE_PREFIX . 'PingedGateways');
 
@@ -368,6 +384,7 @@ $_ITPINGS_VIEWNAMES = [
     VIEWNAME_EVENTS
     , VIEWNAME_APPLICATIONDEVICES
     , VIEWNAME_SENSORVALUES
+    , VIEWNAME_SENSORVALUES_UPDATE
     , VIEWNAME_GATEWAYS
     , VIEWNAME_PINGEDGATEWAYS];
 
@@ -425,9 +442,11 @@ $_VALID_QUERY_PARAMETERS = [
 
 
 //PREDEFINED QUERIES
+define('NO_SQL_QUERY', 'none');
 define('SQL_QUERY_ApplicationDevices', 'Devices');
 define('SQL_QUERY_DatabaseInfo', 'DBInfo');
-
+define('SQL_QUERY_RecentIDs', 'IDs'); // smallest JSON payload as possible
+define('SQL_QUERY_RecentPingID', 'PingID'); // smallest JSON payload as possible
 
 //endregion == DATABASE SCHEMA AND CONFIGURATION ==================================================
 

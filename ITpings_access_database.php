@@ -16,7 +16,7 @@ define('DBUSERNAME', 'YOURUSERNAME');
 define('DBPASSWORD', 'YOURPASSWORD');
 
 // this key protects your webhook from being abused by others
-define('YOUR_ITPINGS_KEY', '__ENTER_YOUR_PRIVATE_KEY_');
+    define('YOUR_ITPINGS_KEY', '__ENTER_YOUR_PRIVATE_KEY_');
 
 // [optional] open the ITpings_connector.php in your WebBrowser
 // and see ITpings create the Database Schema

@@ -12,6 +12,12 @@
     <!--
     https://flatuicolors.com/palette/nl
     -->
+    <!--maximum height for itpings-table and itpings-chart-->
+    <style id="maxheight">
+        :root {
+            --max-height: 30vh;
+        }
+    </style>
     <style id="Table definitions">
         body {
             font-family: Helvetica Neue, Arial, sans-serif;
@@ -28,7 +34,7 @@
         .table-wrapper {
             margin-bottom: 1em;
             border: 1px solid green;
-            max-height: 15em;
+            max-height: var(--max-height);
             overflow-x: hidden;
             overflow-y: auto;
         }
@@ -70,13 +76,19 @@
             width: 4em;
         }
 
+        [data-column='eventtype'],
         [data-column='time'],
         [data-column='app_id'],
         [data-column='dev_id'] {
             width: 12em;
         }
 
+        [data-column='eventlabel'] {
+            width: 15em;
+        }
+
         /* hide table columns */
+        [data-column='Free'],
         [data-column='description'],
         [data-column='timestamp'],
         [data-column='created'],
@@ -126,7 +138,6 @@
 
         /* overrule default max-height*/
         itpings-table[query='SensorValues'] .table-wrapper {
-            max-height: 50vh;
         }
 
         /* Hide Columns */
@@ -155,30 +166,6 @@
         }
     </style>
     <style>
-        .overflow-scroll-gradient {
-            position: relative;
-        }
-
-        .overflow-scroll-gradient::after {
-            content: '';
-            position: absolute;
-            bottom: 0;
-            width: 300px;
-            height: 25px;
-            background: linear-gradient(rgba(255, 255, 255, 0.001), white); /* transparent keyword is broken in Safari */
-            pointer-events: none;
-        }
-
-        .overflow-scroll-gradient__scroller {
-            overflow-y: scroll;
-            background: white;
-            width: 300px;
-            height: 250px;
-            padding: 15px 0;
-            line-height: 1.2;
-            text-align: center;
-        }
-
         .truncate-text {
             overflow: hidden;
             white-space: nowrap;
@@ -212,8 +199,8 @@
     </style>
     <style id="itpings-chart">
         itpings-chart {
-            height: 40vh;
-            xmax-height: 30vh;
+            height: var(--max-height);
+            max-height: var(--max-height);;
             xposition: relative;
         }
 
@@ -224,7 +211,7 @@
 
         .chart_interval {
             position: absolute;
-            top: 2px;
+            top: -1px;
             right: 2px;
         }
 
@@ -235,7 +222,7 @@
             text-align: center;
             position: relative;
             float: left;
-            font-size: 10px;
+            font-size: 9px;
         }
 
         .chart_interval > div:hover {
@@ -252,7 +239,7 @@
         /* This style definition will be filled by JavaScript */
     </style>
     <!-- run script after CSS declarations, because script references above/existing styles -->
-    <script language="JavaScript" src="ITpings_dashboard.js"></script>
+    <script language="JavaScript" src="ITpings_dashboard.min.js"></script>
 </head>
 <body>
 <a href="https://github.com/Danny-Engelman/ITpings"><img style="position: absolute; top: 0; left: 0; border: 0;"
@@ -263,7 +250,7 @@
     <tr>
         <th colspan="3">
 
-            <div class="applicationTitle">ITpings Dashboard
+            <div class="applicationTitle">ITpings Dashboard2
                 <button id="dropDatabase">Drop Database</button>
                 <button id="createDatabase">Create Database</button>
             </div>
@@ -287,26 +274,36 @@
     </thead>
     <tbody>
     <tr>
+        <td class="overflow-scroll-gradient">
+            <itpings-table query="DBInfo" title="ITpings Database Info" noscroll></itpings-table>
+        </td>
+        <td colspan="2">
+            <itpings-table query="SensorValues" title="SensorValues" pulse="pings:_pingid"></itpings-table>
+        </td>
         <td>
-            <itpings-table query="DBInfo" title="ITpings Database Info" noscroll refreshall></itpings-table>
+            <itpings-chart chartid="temperature" sensorname="temperature_5" interval="H2"
+                           pulse="SensorValues:_pingid"></itpings-chart>
+        </td>
+    </tr>
+    <tr>
+        <td>
             <itpings-table query="applications" title="All Applications"></itpings-table>
-            <itpings-table query="Devices" title="All Devices"></itpings-table>
-            <itpings-table query="Events" title="ITpings Events"></itpings-table>
+            <itpings-table query="Devices" title="All Devices" pulse="devices:_devid"></itpings-table>
+        </td>
+        <td colspan="2">
+            <itpings-table query="PingedGateways" title="Pinged Gateways"></itpings-table>
         </td>
         <td>
-            <itpings-table query="SensorValues" title="SensorValues"></itpings-table>
-        </td>
-        <td>
-            <itpings-chart chartid="temperature" sensorname="temperature_5" interval="H2"></itpings-chart>
-            <itpings-chart chartid="luminosity" sensorname="luminosity_6" interval="H6"></itpings-chart>
+            <itpings-chart chartid="luminosity" sensorname="luminosity_6" interval="H6"
+                           pulse="pings:_pingid"></itpings-chart>
         </td>
     </tr>
     <tr>
         <td colspan="2">
-            <itpings-table query="PingedGateways" title="Pinged Gateways" maxrowcount="10"></itpings-table>
-            <itpings-table query="Gateways" title="All Gateways"></itpings-table>
+            <itpings-table query="Events" title="ITpings Events"></itpings-table>
         </td>
-        <td>
+        <td colspan="2">
+            <itpings-table query="Gateways" title="All Gateways"></itpings-table>
         </td>
     </tr>
 

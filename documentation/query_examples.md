@@ -1,6 +1,6 @@
 # SQL Query Examples
 
-## Application devices inclduing activity time
+## Application devices including activity time
 
 ```sql
 SELECT AD.* , LSV.FirstSeen, LSV.LastSeen 

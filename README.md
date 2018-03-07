@@ -136,7 +136,7 @@ And you can add your own in the ``ITpings_connector.php`` PHP script.
 The MySQL Database schema is the major part of this application.
 
 I have included my (very simple) Dashboard so something is shown the moment you install this application.  
-By the MIT license, you may use the provided ``itpings-table`` and ``itpings-graph`` CustomElements 
+By the MIT license, you may use the provided ``itpings-table`` and ``itpings-graph`` [CustomElements](https://developers.google.com/web/fundamentals/web-components/customelements) (a W3C standard not yet supported in IE)  
 
 To make this work on any LAMP stack, the Dashboard uses oldskool AJAX short-polling for (almost live) updates.
 
@@ -157,7 +157,7 @@ but for this application it is only you and your Dashboard)
 
 **Note:** Use Chrome, and install a decent **[JSON Viewer](https://chrome.google.com/webstore/detail/json-viewer/gbmdgpbipfallnflgajpaliibnhdgobh)** extension
 
-ITpings uses a custom API at ``/ITpings_connector.php?query=SensorValues``
+ITpings uses a custom API at ``/ITpings_connector.php?query=[TABLE/VIEW NAME]``
 
 Returning JSON data:
 
@@ -187,7 +187,52 @@ SQL: ``SELECT * FROM SensorValues WHERE _sensorid IN(6,7)``
 
 ## Display Tables and Graphs using HTML Custom Elements
 
+The Dashboard is built using **[ES6](https://codeburst.io/es6-tutorial-for-beginners-5f3c4e7960be)** and W3C standard **[Custom Elements](https://developers.google.com/web/fundamentals/web-components/customelements)** (supported in Chrome, even FireFox is not up to par yet)  
+Meant to be (my) a Developer Dashboard I didn't use **[Polymer](https://www.polymer-project.org/)** to make it work in other browsers.
 
+### Custom Elements (a subset of Web Components)
+
+Make it possible te create new HTML elements, encapsulating all the logic
+
+HTML:
+
+	<itpings-table query="SensorValues"></itpings-table>
+
+Displays the whole Table (and keeps it up to date):
+
+![](https://i.imgur.com/cU9mhcz.jpg)
+
+### Applying CSS
+
+ITpings adds HTML content with loads of data-attributes:
+
+![](https://i.imgur.com/vJAHdEN.jpg)
+
+This makes it possible to use just CSS for extra layout
+
+In the Table screenshot above Columns and Rows are hidden based on data-attributes:
+
+	<style>
+        /* Hide Columns */
+        itpings-table[query='SensorValues'] [data-column$='sensorid'],
+        itpings-table[query='SensorValues'] [data-column$='appdevid'],
+        itpings-table[query='SensorValues'] [data-column='app_id'],
+		itpings-table[query='SensorValues'] [data-column='hardware_serial'] {
+		    display: none;
+		}
+
+        /* Hide TR rows*/
+        itpings-table[query='SensorValues'] [data-sensorname^='accelerometer'] {
+            display: none;
+        }
+	</style>
+
+More, see: **[30 CSS Selectors you must memorize](https://code.tutsplus.com/tutorials/the-30-css-selectors-you-must-memorize--net-16048)**
+
+<br><br>
+<hr>
+
+<hr>
 # Misc
 
 ### MySQL Database management alternatives
@@ -197,25 +242,7 @@ SQL: ``SELECT * FROM SensorValues WHERE _sensorid IN(6,7)``
 PHPMyAdmin is the default tool for MySQL on the LAMP/WAMP stack.
 
 If you can access your MySQL server remotely (*you may have to ask your ISP to open the (default) 3306 port*)  
-[Oracle's MySQL WorkBench](https://www.mysql.com/products/workbench/) (GPL license) or [Toad Edge](https://www.toadworld.com/products/toad-edge) ($$$) can be installed on your local machine. 
+**[Oracle's MySQL WorkBench](https://www.mysql.com/products/workbench/)** (GPL license) or [Toad Edge](https://www.toadworld.com/products/toad-edge) ($$$) can be installed on your local machine. 
 
-[RESTer](https://github.com/geekypedia/RESTer) (or a fork) (MIT license) Not only adds a RESTfull API (remember: is NOT required to use ITpings), but also provides a fast and good enough Admin interface for managing your MySQL database.
+**[RESTer](https://github.com/geekypedia/RESTer)** (or a fork) (MIT license) Not only adds a RESTfull API (remember: is NOT required to use ITpings), but also provides a fast and good enough Admin interface for managing your MySQL database. (it includes an older version of **[Adminer](https://www.adminer.org/)**)  
 
-### Adding a REST interface (if you really want one)
-
-
-[RESTer](https://github.com/geekypedia/RESTer) is also a great (simple) replacement for PHPMyAdmin;  
-
-## Tips and Tricks
-
-## Development comments
-
-Before using ITpings in a production environment, you may want to read [Why Build a Time Series Data Platform?](https://db-engines.com/en/blog_post/71)
-### MomentJS versus Date-Fns
-
-ChartJS works on top of MomentJS, otherwise switch to more modern Date-fns
-
-## Todo
-
-* one-click Drop/Create database
-* JS console CLI?

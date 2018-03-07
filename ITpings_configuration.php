@@ -3,15 +3,18 @@ include('ITpings_access_database.php');
 
 //region ===== APPLICATION DEVELOPMENT ============================================================
 
+//to do
 // viz.js
 // graph RSSI/SNR
 // View Pings (use PingedGateways)
-// include max ids from other tables in JSON response
 // use pings.meta_time instead of created
 
 //endregion == APPLICATION DEVELOPMENT ============================================================
 
 //region ===== APPLICATION CONFIGURATION ==========================================================
+
+// allow front-end to drop Database or create or replace Views
+define('ALLOW_DATABASE_CHANGES', TRUE);
 
 // IP address where Ping came from
 // Let's record for some period and see if it is usefull at all

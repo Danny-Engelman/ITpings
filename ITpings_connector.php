@@ -1431,22 +1431,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 } else { // GET (JSON) request
     switch ($QueryStringParameters['action']) {
         case 'drop':
-            if (YOUR_ITPINGS_KEY === $QueryStringParameters['key']) {
-                foreach ($_ITPINGS_TABLES as $index => $table_name) {
-                    $sql = "DROP TABLE IF EXISTS $table_name;";
-                    echo $sql;
-                    SQL_Query($sql);
-                }
-                foreach ($_ITPINGS_VIEWNAMES as $index => $view) {
-                    $sql = "DROP VIEW IF EXISTS $view;";
-                    echo $sql;
-                    SQL_Query($sql);
+            if (ALLOW_DATABASE_CHANGES) {
+                if (YOUR_ITPINGS_KEY === $QueryStringParameters['key']) {
+                    foreach ($_ITPINGS_TABLES as $index => $table_name) {
+                        $sql = "DROP TABLE IF EXISTS $table_name;";
+                        echo $sql;
+                        SQL_Query($sql);
+                    }
+                    foreach ($_ITPINGS_VIEWNAMES as $index => $view) {
+                        $sql = "DROP VIEW IF EXISTS $view;";
+                        echo $sql;
+                        SQL_Query($sql);
+                    }
                 }
             }
             break;
         case 'create':
-            create_ITpings_Tables();
-            create_ITpings_Views();
+            if (ALLOW_DATABASE_CHANGES) {
+                create_ITpings_Tables();    // Tables are NOT re-created, CREATE TABLE IF NOT EXIST
+            }
+            create_ITpings_Views();     // Views are RE-created, CREATE OR REPLACE VIEW
             break;
         default:
             process_Query_with_QueryString_Parameters();

@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!--suppress CssOptimizeSimilarProperties -->
 <html lang="en">
 <head>
     <title>ITpings Dashboard</title>
@@ -16,6 +17,7 @@
     <style id="maxheight">
         :root {
             --max-height: 30vh;
+            --bordercolor: 'green';
         }
     </style>
     <style id="Table definitions">
@@ -31,9 +33,11 @@
             border-spacing: 0px;
         }
 
+        .chart-wrapper,
         .table-wrapper {
             margin-bottom: 1em;
-            border: 1px solid green;
+            border: 1px solid;
+            border-color: var(--bordercolor);
             max-height: var(--max-height);
             overflow-x: hidden;
             overflow-y: auto;
@@ -60,9 +64,19 @@
 
         .applicationTitle {
             font-size: 18px;
+            width: 100%;
         }
 
-        .table-title {
+        .github {
+            background: orange;
+            position: absolute;
+            right: 2px;
+            top: 0px;
+            padding: 2px;
+            font-size: 14px;
+        }
+
+        .itpings-div-title {
             background: green;
             color: beige;
             font-weight: bolder;
@@ -149,7 +163,17 @@
         }
 
         /* Hide TR rows*/
+        itpings-table[query='SensorValues'] [data-sensorname^='digital_in_2'],
+        itpings-table[query='SensorValues'] [data-sensorname^='digital_in_3'],
         itpings-table[query='SensorValues'] [data-sensorname^='accelerometer'] {
+            display: none;
+        }
+
+        /* Hide Columns */
+        itpings-table[query='PingedGateways'] [data-column='alt'],
+        itpings-table[query='PingedGateways'] [data-column='lat'],
+        itpings-table[query='PingedGateways'] [data-column='lon'],
+        itpings-table[query='PingedGateways'] [data-column='_gwtid'] {
             display: none;
         }
 
@@ -173,9 +197,9 @@
         }
     </style>
     <style id="Color new Pings">
-        itpings-table TBODY:nth-child(odd) {
-            background-color: beige;
-        }
+        /*itpings-table TBODY:nth-child(odd) {*/
+        /*background-color: beige;*/
+        /*}*/
 
         TBODY.newPing .fadeOutCell {
             animation: fadeOut 60s linear 0s;
@@ -201,7 +225,12 @@
         itpings-chart {
             height: var(--max-height);
             max-height: var(--max-height);;
-            xposition: relative;
+            position: relative;
+        }
+
+        itpings-chart .itpings-div-title {
+            text-align: left;
+            padding-left: 1em;
         }
 
         [data-column='eventvalue'] {
@@ -209,10 +238,17 @@
             overflow: hidden;
         }
 
+        .chart-wrapper {
+            border: 1px solid;
+            border-color: var(--bordercolor);
+            position: relative;
+            height: inherit;
+        }
+
         .chart_interval {
             position: absolute;
-            top: -1px;
-            right: 2px;
+            top: 1px;
+            right: 1px;
         }
 
         .chart_interval > div {
@@ -223,6 +259,7 @@
             position: relative;
             float: left;
             font-size: 9px;
+            background: lightgreen;
         }
 
         .chart_interval > div:hover {
@@ -231,79 +268,112 @@
             color: white;
         }
 
-        .selectedInterval {
-            background-color: lightgreen;
+        .chart_interval > div.selectedInterval {
+            background-color: green;
+            color:white;
+        }
+
+        /*Temperature Image*/
+        tbody > tr[data-sensorname="temperature_5"] > td[data-column="sensorvalue"]::before {
+            /*content: url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iaXNvLTg4NTktMSI/PjxzdmcgdmVyc2lvbj0iMS4xIiBpZD0iQ2FwYV8xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB4PSIwcHgiIHk9IjBweCIgdmlld0JveD0iMCAwIDMyIDMyIiBzdHlsZT0iZW5hYmxlLWJhY2tncm91bmQ6bmV3IDAgMCAzMiAzMjsiIHhtbDpzcGFjZT0icHJlc2VydmUiPjxnPjxnPjxwYXRoIHN0eWxlPSJmaWxsOiMwMzAxMDQ7IiBkPSJNMjAsMjEuNTI3VjQuMDA2QzIwLDEuNzkzLDE4LjIwNSwwLDE2LDBjLTIuMjA5LDAtNCwxLjc4Ny00LDQuMDA2djE3LjUyMWMtMS4yMjgsMS4wOTktMiwyLjY5Ni0yLDQuNDczYzAsMy4zMTIsMi42ODcsNiw2LDZjMy4zMTIsMCw2LTIuNjg4LDYtNkMyMiwyNC4yMjMsMjEuMjI5LDIyLjYyNiwyMCwyMS41Mjd6IE0xNiwzMGMtMi4yMDksMC00LTEuNzkxLTQtNGMwLTEuNDgsMC44MDUtMi43NzMsMi0zLjQ2NVY0LjAwNUMxNCwyLjg5NywxNC44OTYsMiwxNiwyYzEuMTExLDAsMiwwLjg5NywyLDIuMDA1djE4LjUzYzEuMTk1LDAuNjkxLDIsMS45ODQsMiwzLjQ2NUMyMCwyOC4yMDksMTguMjA5LDMwLDE2LDMweiIvPjxwYXRoIHN0eWxlPSJmaWxsOiMwMzAxMDQ7IiBkPSJNMTYuOTg0LDIzLjE2NkMxNi45OTUsMjMuMTExLDE3LDIzLjA1NSwxNywyMi45OTd2LTkuOTk0QzE3LDEyLjQ0OSwxNi41NTcsMTIsMTYsMTJjLTAuNTUzLDAtMSwwLjQ1Ni0xLDEuMDAzdjkuOTk0YzAsMC4wNTgsMC4wMDUsMC4xMTQsMC4wMTQsMC4xNjlDMTMuODQyLDIzLjU3MywxMywyNC42ODgsMTMsMjZjMCwxLjY1NywxLjM0MywzLDMsM3MzLTEuMzQzLDMtM0MxOSwyNC42ODgsMTguMTU4LDIzLjU3MywxNi45ODQsMjMuMTY2eiIvPjwvZz48L2c+PGc+PC9nPjxnPjwvZz48Zz48L2c+PGc+PC9nPjxnPjwvZz48Zz48L2c+PGc+PC9nPjxnPjwvZz48Zz48L2c+PGc+PC9nPjxnPjwvZz48Zz48L2c+PGc+PC9nPjxnPjwvZz48Zz48L2c+PC9zdmc+);*/
+        }
+
+        /*RSSI Signal Strength Image*/
+        tbody > tr > td[data-column="rssi"]::before {
+            /*content: url(data:image/svg+xml;utf8;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iaXNvLTg4NTktMSI/Pgo8IS0tIEdlbmVyYXRvcjogQWRvYmUgSWxsdXN0cmF0b3IgMTYuMC4wLCBTVkcgRXhwb3J0IFBsdWctSW4gLiBTVkcgVmVyc2lvbjogNi4wMCBCdWlsZCAwKSAgLS0+CjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+CjxzdmcgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgdmVyc2lvbj0iMS4xIiBpZD0iQ2FwYV8xIiB4PSIwcHgiIHk9IjBweCIgd2lkdGg9IjE2cHgiIGhlaWdodD0iMTZweCIgdmlld0JveD0iMCAwIDM5Mi42MzQgMzkyLjYzNCIgc3R5bGU9ImVuYWJsZS1iYWNrZ3JvdW5kOm5ldyAwIDAgMzkyLjYzNCAzOTIuNjM0OyIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+CjxnPgoJPHBhdGggZD0iTTM3Mi4yMDIsMGgtNTUuNzk3Yy01LjMzNywwLTkuNjYsNC4zMTktOS42Niw5LjY1NXY4Ny40NTZjMC01LjMzNS00LjMyMi05LjY1OC05LjY2NC05LjY1OGgtNTUuNzk3ICAgYy01LjMzNiwwLTkuNjY5LDQuMzIzLTkuNjY5LDkuNjU4djUzLjk2Yy0xLjc2Mi0yLjEzNS00LjQwNS0zLjUyNS03LjM5My0zLjUyNWgtNTUuODAzYy01LjMzLDAtOS42NTYsNC4zMjYtOS42NTYsOS42NjF2NjguNjc3ICAgYzAtNS4zMy00LjMyNi05LjY1My05LjY2Ny05LjY1M0g5My4zYy01LjMzMywwLTkuNjU4LDQuMzE3LTkuNjU4LDkuNjUzdjUzLjk2NGMtMS43NzEtMi4xMzQtNC40MS0zLjUyMy03LjQwNS0zLjUyM0gyMC40NCAgIGMtNS4zMzMsMC05LjY2NSw0LjMxNy05LjY2NSw5LjY1OHY5Ni45OTFjMCw1LjMzMSw0LjMyNiw5LjY2LDkuNjY1LDkuNjZsMzUxLjc2MS0wLjIwNWM1LjMyOCwwLDkuNjU3LTQuMzIzLDkuNjU3LTkuNjY0VjkuNjU1ICAgQzM4MS44NTMsNC4zMjYsMzc3LjUzLDAsMzcyLjIwMiwweiBNNzIuOTIxLDM3Ni4xMkgyNi43Nzl2LTgwLjQ3OWg0Ni4xNDNWMzc2LjEyeiBNMTQ1LjE4OCwzNzYuMTJIOTkuMDVWMjM2LjA4M2g0Ni4xMzhWMzc2LjEyeiAgICBNMjIwLjQzMSwzNzYuMTJoLTQ2LjE0VjE2MS41aDQ2LjE0VjM3Ni4xMnogTTI5NC4xNjIsMzc2LjEyaC00Ni4xNDFWMTAzLjAxOWg0Ni4xNDFWMzc2LjEyeiBNMzY2LjE5OCwzNzYuMTJoLTQ2LjEzMlYxNi42MzggICBoNDYuMTMyVjM3Ni4xMnoiIGZpbGw9IiMwMDAwMDAiLz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8L3N2Zz4K)*/
         }
     </style>
     <style title="DynamicDeviceColors">
         /* This style definition will be filled by JavaScript */
     </style>
+    <style title="Loading_dots">
+        .loading {
+            font-size: 200%;
+            text-align: left;
+        }
+
+        /* 3 pulsating ellipses after Loading text */
+        .loading:after {
+            overflow: hidden;
+            display: inline-block;
+            vertical-align: bottom;
+            -webkit-animation: ellipsis steps(4, end) 1100ms infinite;
+            animation: ellipsis steps(4, end) 1100ms infinite;
+            content: "\2026"; /* ascii code for the ellipsis character */
+            width: 0px;
+        }
+
+        @keyframes ellipsis {
+            to {
+                width: 1.25em;
+            }
+        }
+
+        @-webkit-keyframes ellipsis {
+            to {
+                width: 1.25em;
+            }
+        }
+    </style>
     <!-- run script after CSS declarations, because script references above/existing styles -->
-    <script language="JavaScript" src="ITpings_dashboard.min.js"></script>
+    <script language="JavaScript" src="ITpings_dashboard.js"></script>
 </head>
 <body>
-<a href="https://github.com/Danny-Engelman/ITpings"><img style="position: absolute; top: 0; left: 0; border: 0;"
-                                                         src="https://s3.amazonaws.com/github/ribbons/forkme_left_orange_ff7600.png"
-                                                         alt="Fork me on GitHub"></a>
 <table class="ITpings-dashboard">
     <thead>
     <tr>
         <th colspan="3">
-
             <div class="applicationTitle">ITpings Dashboard
                 <!--<button id="dropDatabase">Drop Database</button>-->
                 <!--<button id="createDatabase">Create Database</button>-->
+                <div class="github"><a href="https://github.com/Danny-Engelman/ITpings">Available On GitHub</a></div>
             </div>
             <script>
                 let key = 'YOUR_PRIVATE_KEY';// but you better not use this on a public website!
-
-                function doAction(action) {
-                    document.location = './ITpings_connector.php?action=' + action + '&key=' + key
-                }
-
-                document.querySelector('#dropDatabase').addEventListener('click', _ => {
-                    if (confirm('Really??')) doAction('drop');
-                });
-                document.querySelector('#createDatabase').addEventListener('click', _ => {
-                    doAction('create');
-                });
-
+                let __addClick = (selector, action) => {
+                    let element = document.querySelector(selector);
+                    if (element) {
+                        element.addEventListener('click', _ => {
+                            if (confirm('Really??')) document.location = './ITpings_connector.php?action=' + action + '&key=' + key;
+                        });
+                    }
+                };
+                __addClick('#dropDatabase', 'drop');
+                __addClick('#createDatabase', 'create');
             </script>
         </th>
     </tr>
     </thead>
     <tbody>
-    <tr>
-        <td class="overflow-scroll-gradient">
+    <tr><!-- Top row -->
+        <td>
             <itpings-table query="DBInfo" title="ITpings Database Info" noscroll></itpings-table>
         </td>
         <td colspan="2">
-            <itpings-table query="SensorValues" title="SensorValues" pulse="pings:_pingid"></itpings-table>
+            <!--<itpings-table query="SensorValues" title="SensorValues"></itpings-table>-->
         </td>
         <td>
-            <itpings-chart chartid="temperature" sensorname="temperature_5" interval="H2"
-                           pulse="SensorValues:_pingid"></itpings-chart>
+            <itpings-chart sensorname="temperature_5" interval="H2"></itpings-chart>
         </td>
     </tr>
-    <tr>
+    <tr><!-- Middle row -->
         <td>
-            <itpings-table query="applications" title="All Applications"></itpings-table>
-            <itpings-table query="Devices" title="All Devices" pulse="devices:_devid"></itpings-table>
+            <!--<itpings-table query="applications" title="All Applications"></itpings-table>-->
+            <itpings-table query="Devices" title="All Devices"></itpings-table>
         </td>
         <td colspan="2">
             <itpings-table query="PingedGateways" title="Pinged Gateways"></itpings-table>
         </td>
         <td>
-            <itpings-chart chartid="luminosity" sensorname="luminosity_6" interval="H6"
-                           pulse="pings:_pingid"></itpings-chart>
+            <!--<itpings-chart chartid="luminosity" sensorname="luminosity_6" interval="H6"></itpings-chart>-->
         </td>
     </tr>
-    <tr>
+    <tr><!-- Bottom row -->
         <td colspan="2">
             <itpings-table query="Events" title="ITpings Events"></itpings-table>
         </td>
         <td colspan="2">
-            <itpings-table query="Gateways" title="All Gateways"></itpings-table>
+            <!--<itpings-table query="Gateways" title="All Gateways"></itpings-table>-->
         </td>
     </tr>
 

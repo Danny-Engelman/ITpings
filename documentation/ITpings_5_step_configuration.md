@@ -24,7 +24,7 @@
 
 ## 4. Create a HTTP Integration in the The Things Network Application console  
    
-* Enter the full URL the __``ITpings_connector.php?key=__YOUR_PRIVATE_KEY__``__ file on your webserver
+* Enter the full URL to the __``ITpings_connector.php?key=__YOUR_PRIVATE_KEY__``__ file on your webserver
 
 	![](https://i.imgur.com/g00KBos.jpg)
 

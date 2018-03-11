@@ -1191,7 +1191,7 @@ function process_Predefined_Query()
             $sql .= " FROM information_schema.tables S";
             $sql .= " WHERE table_name LIKE '" . TABLE_PREFIX . "%'";
             $sql .= " AND TABLE_TYPE = 'BASE TABLE'";
-            $sql .= " ORDER BY TABLE_NAME ASC";
+            $sql .= " ORDER BY DataLength ASC";
             break;
         case SQL_QUERY_RecentIDs: // query=IDs   // all relevant IDs , smallest JSON payload as possible
             attach_Max_IDs_to_JSON_response();

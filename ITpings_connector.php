@@ -1222,6 +1222,26 @@ function process_OneSensor($sensor_name)
 }
 
 /**
+ * convert different sensor outputs to same values
+ * eg: Cayenne gives us 4.16 and TTN 4160
+ * @param $sensor_name
+ * @param $sensor_value
+ * @return float|int
+ */
+function process_SensorValue($sensor_name, $sensor_value)
+{
+    switch ($sensor_name) {
+        case 'battery': // standard TTN (NON-Cayenne) Sketch/encoding from whole number to: X.yyy
+            $sensor_value = (int)$sensor_value / 1000;
+            break;
+        default:
+            break;
+    }
+
+    return $sensor_value;
+}
+
+/**
  * Process TTN POST PayLoad Object: payload_fields
  */
 function process_Sensors_From_PayloadFields()
@@ -1241,12 +1261,14 @@ function process_Sensors_From_PayloadFields()
 
             $sensor_ID = process_OneSensor($sensor_name);
 
+            $sensorValue = process_SensorValue($sensor_name, $sensor_value);
+
             SQL_INSERT(
                 TABLE_SENSORVALUES
                 , [//values
                 $request[PRIMARYKEY_Ping]
                 , Valued($sensor_ID)
-                , Quoted($sensor_value)
+                , Quoted($sensorValue)
             ]);
 
             check_Event_Trigger_For_Sensor($sensor_name, $sensor_value);

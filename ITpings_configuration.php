@@ -290,7 +290,7 @@ define('ITPINGS_SENSORNAME', 'sensorname');
 $_DBFIELD_SENSORNAME = [ITPINGS_SENSORNAME, 'VARCHAR(256)', "TTN Payload key"];    // ?? 256 enough?
 
 define('ITPINGS_SENSORVALUE', 'sensorvalue');
-$_DBFIELD_SENSORVALUE = [ITPINGS_SENSORVALUE, 'VARCHAR(1024)', 'TTN Payload value'];      // key value in JSON payload
+$_DBFIELD_SENSORVALUE = [ITPINGS_SENSORVALUE, 'VARCHAR(256)', 'TTN Payload value'];      // key value in JSON payload
 
 /**
  * Foreign keys are not for performance,
@@ -379,6 +379,7 @@ define('VIEWNAME_APPLICATIONDEVICES', TABLE_PREFIX . 'ApplicationDevices');
 define('VIEWNAME_SENSORVALUES', TABLE_PREFIX . 'SensorValues');
 define('VIEWNAME_SENSORVALUES_UPDATE', TABLE_PREFIX . 'SensorValuesUpdate'); // less JOINs, thus faster response
 define('VIEWNAME_GATEWAYS', TABLE_PREFIX . 'Gateways');
+define('VIEWNAME_PINGEDDEVICES', TABLE_PREFIX . 'PingedDevices');
 define('VIEWNAME_PINGEDGATEWAYS', TABLE_PREFIX . 'PingedGateways');
 
 // Loop all names in front-end query check
@@ -389,6 +390,7 @@ $_ITPINGS_VIEWNAMES = [
     , VIEWNAME_SENSORVALUES
     , VIEWNAME_SENSORVALUES_UPDATE
     , VIEWNAME_GATEWAYS
+    , VIEWNAME_PINGEDDEVICES
     , VIEWNAME_PINGEDGATEWAYS];
 
 //endregion == VIEW AND QUERY CONFIGURATION =======================================================
@@ -402,6 +404,7 @@ define('QUERY_PARAMETER_ORDERBY', 'orderby');
 define('QUERY_PARAMETER_LIMIT', 'limit');
 define('QUERY_PARAMETER_INTERVAL', 'interval');
 define('QUERY_PARAMETER_INTERVALUNIT', 'intervalunit');
+define('QUERY_PARAMETER_MAXROWS', 'maxrows');
 
 define('INTERVALUNIT_SECOND', 'SECOND');
 define('INTERVALUNIT_MINUTE', 'MINUTE');

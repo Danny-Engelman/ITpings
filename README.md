@@ -58,11 +58,13 @@ But neither met my growing list of requirements (or took too long to build):
 * Get (almost) live updates of new information 
 * Issue an alarm when a device was not seen for over an hour 
 
-From a simple SPA page it evolved into a labour of love, especially since I develop by the motto: **_Use only necessary dependencies_**
+From a simple SPA page it evolved into a labour of love,  
+especially since I develop by the motto: **_Use only necessary dependencies_**
 
-So I ditched React and Angular, considered Vue, and eventually went with Native ES6 WebComponents   
-Hey! **I** am in charge now, using ES6, so **my** Dashboard does **not** work in crappy old-fashioned browsers.  
+So I ditched Bootstrap, React and Angular, considered Vue, and eventually went with Native ES6 WebComponents   
+Hey! **I** am in charge now!  
 I spent the last 12 years in the Microsoft Front-End world.. feels good to break free :-)  
+Using only CSS4, HTML5 and ES6, so **my** Dashboard does **not** work in crappy old-fashioned browsers.  
 
 For simplicity sake I didn't go fancy with NodeJS, socket.io and loads more dependencies;  
 
@@ -246,3 +248,6 @@ If you can access your MySQL server remotely (*you may have to ask your ISP to o
 
 **[RESTer](https://github.com/geekypedia/RESTer)** (or a fork) (MIT license) Not only adds a RESTfull API (remember: is NOT required to use ITpings), but also provides a fast and good enough Admin interface for managing your MySQL database. (it includes an older version of **[Adminer](https://www.adminer.org/)**)  
 
+### Further reading
+
+* https://mongoose-os.com/blog/why-mqtt-is-getting-so-popular-in-iot/

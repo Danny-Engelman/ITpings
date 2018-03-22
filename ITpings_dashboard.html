@@ -8,108 +8,282 @@
     <meta http-equiv="x-ua-compatible" content="ie=edge"> <!-- † -->
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
+    <!-- All the dependencies -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.19.1/moment.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.1/Chart.min.js"></script>
-    <!--
-    https://flatuicolors.com/palette/nl
-    -->
-    <!--maximum height for itpings-table and itpings-chart-->
-    <style id="maxheight">
+
+    <!-- resource colors: https://flatuicolors.com/palette/nl -->
+    <style>
         :root {
-            --max-height: 30vh;
-            --bordercolor: 'green';
+            --global--BackgroundColor: #444;
+            --global--Color: whitesmoke;
+            --global--article--BackgroundColor: lightgrey;
+            --global--itpings--BackgroundColor: whitesmoke;
+            --global--UI-background-color--Color: green;
+            --global--header-text--Color: beige;
+            --global--header-background--Color: #42b983;
+            --global--header--Height: 35px;
+            --global--footer--Height: var(--global--header--Height);
+            --global--header-sidebar-footer--Gridgap: 1px;
+            --global--sidebar--Width: 100px;
+            --global--article--Gridgap: 3px;
+            /* 3 rows is 2 gridgaps */
+            --global--article-3row--Gridgap: calc(var(--global--article--Gridgap) * 2);
+            /* height of all BUT article element */
+            --global--non-article-UI--Height: calc(var(--global--header--Height) + var(--global--footer--Height) + var(--global--header-sidebar-footer--Gridgap) * 2);
+            /* so how much height is left for the article.. */
+            --global--article--Height: calc(100vh - (var(--global--article-3row--Gridgap) + var(--global--non-article-UI--Height)));
+            /* one row height (with 3 rows total) */
+            /* This is the height of the itpings-table / itpings-graph */
+            --global--article--Rowheight: calc(var(--global--article--Height) / 3 - (var(--global--article--Gridgap)));
+            --global--device-color-square-Height: 10px;
+            --global--device-color-square-Width: 13px;
+        }
+
+        BODY {
+            font-family: Helvetica Neue, Arial, sans-serif;
+            font-size: 12px;
+            margin: var(--global--header-sidebar-footer--Gridgap);
+        }
+
+        *, *:before, *:after {
+            box-sizing: border-box;
+        }
+
+        h1, p {
+            margin: 0 0 1em 0;
+        }
+
+        .ITpings_motto {
+            position: relative;
+            float:right;
+            top: 1em;
+            right:1em;
+        }
+
+        .ITpings_motto A {
+            color: orange;
+        }
+    </style>
+    <style id="CSS Grid">
+        .grid_container {
+            max-height: 100vh;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: var(--global--sidebar--Width) 4fr;
+            grid-gap: var(--global--header-sidebar-footer--Gridgap);
+        }
+
+        .grid_container > * {
+            background-color: var(--global--BackgroundColor);
+            color: var(--global--Color);
+            border-radius: 3px;
+            width: auto;
+            margin: 0;
+        }
+
+        .header, .footer {
+            /* from first to last column */
+            grid-column: 1 / -1;
+            /* needed for the floated layout */
+            clear: both;
+        }
+
+        .header {
+            height: var(--global--header--Height);
+        }
+
+        .footer {
+            height: var(--global--footer--Height);
+        }
+
+        article {
+            height: var(--global--article--Height);
+        }
+
+        .article-container {
+            background-color: var(--global--article--BackgroundColor);
+            display: grid;
+            /* 3 rows , equal (fraction) height */
+            grid-template-rows: repeat(3, 1fr);
+            /* 4 columns , equal (fraction) width */
+            grid-template-columns: repeat(4, 1fr);
+            grid-gap: var(--global--article--Gridgap) var(--global--article--Gridgap);
+            grid-template-areas: "row1 row1 row1 row1" "row2 row2 row2 row2" "row3 row3 row3 row3";
+        }
+
+        .top_left {
+            grid-area: 1/1/3/1;
+        }
+
+        .top_center {
+            grid-area: 1/2/1/4;
+        }
+
+        .top_right {
+            grid-area: 1/4;
+        }
+
+        .middle_left {
+            grid-area: 2/1;
+        }
+
+        .middle_center {
+            grid-area: 2/2/2/4;
+        }
+
+        .middle_right {
+            grid-area: 2/4;
+        }
+
+        .bottom_left {
+            grid-area: 3/1/3/3;
+        }
+
+        .bottom_center_left {
+            grid-area: 3/2;
+        }
+
+        .bottom_center_right {
+            grid-area: 3/3;
+        }
+
+        .bottom_right {
+            grid-area: 3/4;
         }
     </style>
     <style id="Table definitions">
-        body {
-            font-family: Helvetica Neue, Arial, sans-serif;
-            font-size: 12px;
-            margin: 0 auto;
-        }
-
-        table {
+        TABLE {
             table-layout: fixed;
             width: 100%;
-            border-spacing: 0px;
+            border-spacing: 0;
         }
 
-        .chart-wrapper,
         .table-wrapper {
-            margin-bottom: 1em;
             border: 1px solid;
-            border-color: var(--bordercolor);
-            max-height: var(--max-height);
+            border-color: var(--global--UI-background-color--Color);
+            max-height: var(--global--article--Rowheight);
             overflow-x: hidden;
             overflow-y: auto;
+            position: relative;
+        }
+
+        /* display THEAD fixed to top of Table (actually a second Table with THEAD only) */
+        .sticky-header {
+            position: sticky;
+            top: 0em;
+            width: 100%;
         }
 
         /* ITpings Table Header */
-        thead > tr > td {
-            background-color: #42b983;
-            color: beige;
+        THEAD > TR > TD {
+            background-color: var(--global--header-background--Color);
+            color: var(--global--header-text--Color);
             font-weight: bold;
         }
 
-        td {
+        TD {
             text-align: center;
             color: darkolivegreen;
             overflow: hidden;
-        }
-
-        th, td {
-            min-width: 60px;
-        }
-    </style>
-    <style id="ITpings-table column definitions">
-
-        .applicationTitle {
-            font-size: 18px;
-            width: 100%;
-        }
-
-        .github {
-            background: orange;
-            position: absolute;
-            right: 2px;
-            top: 0px;
-            padding: 2px;
-            font-size: 14px;
-        }
-
-        .itpings-div-title {
-            background: green;
-            color: beige;
-            font-weight: bolder;
-        }
-
-        .ITpings-dashboard > TBODY > TR > TD {
             vertical-align: top;
         }
 
+        TH, TD {
+            min-width: 60px;
+            padding: 0;
+        }
+    </style>
+    <style>
+        .applicationTitle {
+            font-size: 18px;
+            width: 100%;
+            color: orange;
+            padding: 7px;
+        }
+
+        .itpings-div-title {
+            background: var(--global--UI-background-color--Color);
+            color: var(--global--header-text--Color);
+            font-weight: bold;
+        }
+
+    </style>
+
+    <style id="itpings-table_conditional_columns">
+        :root {
+            /*
+                never show Modulation, Data_rate, Coding_rate columns, unless JS code marks them as required
+                CSS can be used for the Cells, but the THEAD columnheader requires JS setProperty
+                PER Table definition can be achieved with WC.TABLE.setProperty()
+            */
+            --global--CSS--display--modulation: none;
+            --global--CSS--display--data_rate: none;
+            --global--CSS--display--coding_rate: none;
+        }
+
+        [data-column='modulation'] {
+            width: 6em;
+            display: var(--global--CSS--display--modulation);
+        }
+
+        [data-column='coding_rate'] {
+            width: 6em;
+            display: var(--global--CSS--display--coding_rate);
+        }
+
+        [data-column='data_rate'] {
+            width: 6em;
+            display: var(--global--CSS--display--data_rate);
+        }
+
+        /* Mark non-default TD cell values, JS code setProperty will show the column header */
+        TBODY [data-column='modulation']:not([data-modulation='LORA']),
+        TBODY [data-column='coding_rate']:not([data-coding_rate='4/5']),
+        TBODY [data-column='data_rate']:not([data-data_rate='SF7BW125']) {
+            display: table-cell;
+            background: lightsalmon;
+        }
+    </style>
+
+    <style id="itpings-table_global_definitions">
+        itpings-table {
+            background-color: var(--global--itpings--BackgroundColor);
+            display: block;
+        }
+
+        /* overrule max-height setting and show full table for tables with 'fullheight' attribute */
+        itpings-table[fullheight] .table-wrapper {
+            max-height: initial;
+            overflow-x: initial;
+            overflow-y: initial;
+        }
+
+        /* alternating TR colors, but multiple TBODYs in a Table still f* up the color */
+        itpings-table tbody tr:nth-child(even) {
+            background-color: var(--global--header-text--Color);
+        }
+
         [data-column$='pingid'] {
-            width: 4em;
+            width: 7ch;
         }
 
-        [data-column='eventtype'],
-        [data-column='time'],
-        [data-column='app_id'],
-        [data-column='dev_id'] {
-            width: 12em;
+        [data-column='time'] {
+            width: 18ch;
         }
 
-        [data-column='eventlabel'] {
-            width: 15em;
+        [data-column='frequency'] {
+            width: 6em;
         }
 
         /* hide table columns */
-        [data-column='Free'],
         [data-column='description'],
         [data-column='timestamp'],
-        [data-column='created'],
         [data-column='payload_raw'],
         [data-column='downlink_url'],
         [data-column$='location_source'],
         [data-column$='src'],
+        [data-column='rfchain'],
         [data-column$='serial'] {
             display: none;
         }
@@ -119,7 +293,7 @@
         }
 
         /* collapse columns on smaller screen width */
-        @media (max-width: 1024px) {
+        @media (max-width: 1280px) {
             [data-column$='appid'],
             [data-column$='appdevid'],
             [data-column$='gtwid'],
@@ -134,7 +308,7 @@
             }
         }
 
-        @media (min-width: 1024px) {
+        @media (min-width: 1280px) {
             [data-column$='appid'],
             [data-column$='devid'],
             [data-column$='appdevid'],
@@ -142,18 +316,74 @@
             [data-column='channel'],
             [data-column='rssi'],
             [data-column='snr'],
-            [data-column='rf_chain'],
             [data-column$='gtwid'],
             [data-column$='trusted'] {
-                width: 3em;
+                width: 7ch;
             }
 
         }
 
-        /* overrule default max-height*/
-        itpings-table[query='SensorValues'] .table-wrapper {
+        .itpings-table-error {
+            background: lightcoral;
+            color: yellow;
         }
 
+    </style>
+    <style id="itpings-table_DBInfo">
+        :root {
+            --DBInfo-RowLength: block;
+            --DBInfo-IndexLength: block;
+        }
+
+        itpings-table[query='DBInfo'] [data-column='Table'] {
+            text-align: left;
+            width: 10em;
+        }
+
+        itpings-table[query='DBInfo'] [data-column='RowLength'] {
+            display: var(--DBInfo-RowLength);
+        }
+
+        itpings-table[query='DBInfo'] [data-column='IndexLength'] {
+            display: var(--DBInfo-RowLength);
+        }
+
+        itpings-table[query='DBInfo'] [data-column='RowLength'],
+        itpings-table[query='DBInfo'] [data-column='Rows'],
+        itpings-table[query='DBInfo'] [data-column='DataLength'],
+        itpings-table[query='DBInfo'] [data-column='IndexLength'] {
+            text-align: right;
+        }
+
+        itpings-table[query='DBInfo'] [data-column='Free'] {
+            display: none;
+        }
+
+        /* collapse columns on smaller screen width */
+        @media (max-width: 1280px) {
+            :root {
+                --DBInfo-RowLength: none;
+                --DBInfo-IndexLength: none;
+            }
+        }
+
+    </style>
+    <style id="itpings-table_Events">
+        [data-column='eventtype'],
+        [data-column='app_id'] {
+            width: 12em;
+        }
+
+        [data-column='eventlabel'] {
+            width: 15em;
+        }
+
+        [data-column='eventvalue'] {
+            max-width: 15em;
+            overflow: hidden;
+        }
+    </style>
+    <style id="itpings-table_SensorValues">
         /* Hide Columns */
         itpings-table[query='SensorValues'] [data-column$='sensorid'],
         itpings-table[query='SensorValues'] [data-column$='appdevid'],
@@ -168,39 +398,43 @@
         itpings-table[query='SensorValues'] [data-sensorname^='accelerometer'] {
             display: none;
         }
-
-        /* Hide Columns */
-        itpings-table[query='PingedGateways'] [data-column='alt'],
-        itpings-table[query='PingedGateways'] [data-column='lat'],
-        itpings-table[query='PingedGateways'] [data-column='lon'],
-        itpings-table[query='PingedGateways'] [data-column='_gwtid'] {
+    </style>
+    <style id="itpings-table_PingedDevices">
+        /* Hide Columns Pinged Devices */
+        itpings-table[query='PingedDevices'] [data-column='created'],
+        itpings-table[query='PingedDevices'] [data-column='alt'],
+        itpings-table[query='PingedDevices'] [data-column='lat'],
+        itpings-table[query='PingedDevices'] [data-column='lon'] {
             display: none;
         }
 
-        .itpings-table-error {
-            background: lightcoral;
-            color: yellow;
+        /* collapse columns on smaller screen width */
+        @media (max-width: 1280px) {
+            itpings-table[query='PingedDevices'] [data-column='coding_rate'] {
+                display: none;
+            }
         }
 
-        /* overrule max-height setting and show full table for tables with 'noscroll' attribute */
-        itpings-table[noscroll] .table-wrapper {
-            max-height: initial;
-            overflow-x: initial;
-            overflow-y: initial;
-        }
     </style>
-    <style>
-        .truncate-text {
-            overflow: hidden;
-            white-space: nowrap;
-            text-overflow: ellipsis;
+    <style id="itpings-table_PingedGateways">
+        /* Hide Columns Pinged Gateways */
+        itpings-table[query='PingedGateways'] [data-column='created'],
+        itpings-table[query='PingedGateways'] [data-column='alt'],
+        itpings-table[query='PingedGateways'] [data-column='lat'],
+        itpings-table[query='PingedGateways'] [data-column='lon'],
+        itpings-table[query='PingedGateways'] [data-column='_gtwid'] {
+            display: none;
+        }
+
+        /* collapse columns on smaller screen width */
+        @media (max-width: 1280px) {
+            itpings-table[query='PingedGateways'] [data-column='trusted'],
+            itpings-table[query='PingedGateways'] [data-column='coding_rate'] {
+                display: none;
+            }
         }
     </style>
     <style id="Color new Pings">
-        /*itpings-table TBODY:nth-child(odd) {*/
-        /*background-color: beige;*/
-        /*}*/
-
         TBODY.newPing .fadeOutCell {
             animation: fadeOut 60s linear 0s;
         }
@@ -221,75 +455,17 @@
         }
 
     </style>
-    <style id="itpings-chart">
-        itpings-chart {
-            height: var(--max-height);
-            max-height: var(--max-height);;
-            position: relative;
-        }
-
-        itpings-chart .itpings-div-title {
+    <style id="Loading_dots">
+        /* Custom Element -table is created AFTER loading, so needs more markup in the .loading DIV title */
+        itpings-table .loading {
             text-align: left;
-            padding-left: 1em;
+            background: var(--global--UI-background-color--Color);
+            color: var(--global--header-text--Color);
+            font-weight: bold;
         }
 
-        [data-column='eventvalue'] {
-            max-width: 15em;
-            overflow: hidden;
-        }
-
-        .chart-wrapper {
-            border: 1px solid;
-            border-color: var(--bordercolor);
-            position: relative;
-            height: inherit;
-        }
-
-        .chart_interval {
-            position: absolute;
-            top: 1px;
-            right: 1px;
-        }
-
-        .chart_interval > div {
-            border: 1px solid grey;
-            width: 2.1em;
-            margin-right: 1px;
-            text-align: center;
-            position: relative;
-            float: left;
-            font-size: 9px;
-            background: lightgreen;
-        }
-
-        .chart_interval > div:hover {
-            cursor: pointer;
-            background-color: green;
-            color: white;
-        }
-
-        .chart_interval > div.selectedInterval {
-            background-color: green;
-            color:white;
-        }
-
-        /*Temperature Image*/
-        tbody > tr[data-sensorname="temperature_5"] > td[data-column="sensorvalue"]::before {
-            /*content: url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iaXNvLTg4NTktMSI/PjxzdmcgdmVyc2lvbj0iMS4xIiBpZD0iQ2FwYV8xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB4PSIwcHgiIHk9IjBweCIgdmlld0JveD0iMCAwIDMyIDMyIiBzdHlsZT0iZW5hYmxlLWJhY2tncm91bmQ6bmV3IDAgMCAzMiAzMjsiIHhtbDpzcGFjZT0icHJlc2VydmUiPjxnPjxnPjxwYXRoIHN0eWxlPSJmaWxsOiMwMzAxMDQ7IiBkPSJNMjAsMjEuNTI3VjQuMDA2QzIwLDEuNzkzLDE4LjIwNSwwLDE2LDBjLTIuMjA5LDAtNCwxLjc4Ny00LDQuMDA2djE3LjUyMWMtMS4yMjgsMS4wOTktMiwyLjY5Ni0yLDQuNDczYzAsMy4zMTIsMi42ODcsNiw2LDZjMy4zMTIsMCw2LTIuNjg4LDYtNkMyMiwyNC4yMjMsMjEuMjI5LDIyLjYyNiwyMCwyMS41Mjd6IE0xNiwzMGMtMi4yMDksMC00LTEuNzkxLTQtNGMwLTEuNDgsMC44MDUtMi43NzMsMi0zLjQ2NVY0LjAwNUMxNCwyLjg5NywxNC44OTYsMiwxNiwyYzEuMTExLDAsMiwwLjg5NywyLDIuMDA1djE4LjUzYzEuMTk1LDAuNjkxLDIsMS45ODQsMiwzLjQ2NUMyMCwyOC4yMDksMTguMjA5LDMwLDE2LDMweiIvPjxwYXRoIHN0eWxlPSJmaWxsOiMwMzAxMDQ7IiBkPSJNMTYuOTg0LDIzLjE2NkMxNi45OTUsMjMuMTExLDE3LDIzLjA1NSwxNywyMi45OTd2LTkuOTk0QzE3LDEyLjQ0OSwxNi41NTcsMTIsMTYsMTJjLTAuNTUzLDAtMSwwLjQ1Ni0xLDEuMDAzdjkuOTk0YzAsMC4wNTgsMC4wMDUsMC4xMTQsMC4wMTQsMC4xNjlDMTMuODQyLDIzLjU3MywxMywyNC42ODgsMTMsMjZjMCwxLjY1NywxLjM0MywzLDMsM3MzLTEuMzQzLDMtM0MxOSwyNC42ODgsMTguMTU4LDIzLjU3MywxNi45ODQsMjMuMTY2eiIvPjwvZz48L2c+PGc+PC9nPjxnPjwvZz48Zz48L2c+PGc+PC9nPjxnPjwvZz48Zz48L2c+PGc+PC9nPjxnPjwvZz48Zz48L2c+PGc+PC9nPjxnPjwvZz48Zz48L2c+PGc+PC9nPjxnPjwvZz48Zz48L2c+PC9zdmc+);*/
-        }
-
-        /*RSSI Signal Strength Image*/
-        tbody > tr > td[data-column="rssi"]::before {
-            /*content: url(data:image/svg+xml;utf8;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iaXNvLTg4NTktMSI/Pgo8IS0tIEdlbmVyYXRvcjogQWRvYmUgSWxsdXN0cmF0b3IgMTYuMC4wLCBTVkcgRXhwb3J0IFBsdWctSW4gLiBTVkcgVmVyc2lvbjogNi4wMCBCdWlsZCAwKSAgLS0+CjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+CjxzdmcgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgdmVyc2lvbj0iMS4xIiBpZD0iQ2FwYV8xIiB4PSIwcHgiIHk9IjBweCIgd2lkdGg9IjE2cHgiIGhlaWdodD0iMTZweCIgdmlld0JveD0iMCAwIDM5Mi42MzQgMzkyLjYzNCIgc3R5bGU9ImVuYWJsZS1iYWNrZ3JvdW5kOm5ldyAwIDAgMzkyLjYzNCAzOTIuNjM0OyIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+CjxnPgoJPHBhdGggZD0iTTM3Mi4yMDIsMGgtNTUuNzk3Yy01LjMzNywwLTkuNjYsNC4zMTktOS42Niw5LjY1NXY4Ny40NTZjMC01LjMzNS00LjMyMi05LjY1OC05LjY2NC05LjY1OGgtNTUuNzk3ICAgYy01LjMzNiwwLTkuNjY5LDQuMzIzLTkuNjY5LDkuNjU4djUzLjk2Yy0xLjc2Mi0yLjEzNS00LjQwNS0zLjUyNS03LjM5My0zLjUyNWgtNTUuODAzYy01LjMzLDAtOS42NTYsNC4zMjYtOS42NTYsOS42NjF2NjguNjc3ICAgYzAtNS4zMy00LjMyNi05LjY1My05LjY2Ny05LjY1M0g5My4zYy01LjMzMywwLTkuNjU4LDQuMzE3LTkuNjU4LDkuNjUzdjUzLjk2NGMtMS43NzEtMi4xMzQtNC40MS0zLjUyMy03LjQwNS0zLjUyM0gyMC40NCAgIGMtNS4zMzMsMC05LjY2NSw0LjMxNy05LjY2NSw5LjY1OHY5Ni45OTFjMCw1LjMzMSw0LjMyNiw5LjY2LDkuNjY1LDkuNjZsMzUxLjc2MS0wLjIwNWM1LjMyOCwwLDkuNjU3LTQuMzIzLDkuNjU3LTkuNjY0VjkuNjU1ICAgQzM4MS44NTMsNC4zMjYsMzc3LjUzLDAsMzcyLjIwMiwweiBNNzIuOTIxLDM3Ni4xMkgyNi43Nzl2LTgwLjQ3OWg0Ni4xNDNWMzc2LjEyeiBNMTQ1LjE4OCwzNzYuMTJIOTkuMDVWMjM2LjA4M2g0Ni4xMzhWMzc2LjEyeiAgICBNMjIwLjQzMSwzNzYuMTJoLTQ2LjE0VjE2MS41aDQ2LjE0VjM3Ni4xMnogTTI5NC4xNjIsMzc2LjEyaC00Ni4xNDFWMTAzLjAxOWg0Ni4xNDFWMzc2LjEyeiBNMzY2LjE5OCwzNzYuMTJoLTQ2LjEzMlYxNi42MzggICBoNDYuMTMyVjM3Ni4xMnoiIGZpbGw9IiMwMDAwMDAiLz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8L3N2Zz4K)*/
-        }
-    </style>
-    <style title="DynamicDeviceColors">
-        /* This style definition will be filled by JavaScript */
-    </style>
-    <style title="Loading_dots">
-        .loading {
-            font-size: 200%;
-            text-align: left;
+        /* a Chart already has a title div, no need for extra markup */
+        itpings-chart .loading {
         }
 
         /* 3 pulsating ellipses after Loading text */
@@ -315,69 +491,152 @@
             }
         }
     </style>
+    <style id="Chart">
+        itpings-chart {
+            height: var(--global--article--Rowheight);
+            max-height: var(--global--article--Rowheight);;
+            position: relative;
+            overflow: hidden;
+            background-color: var(--global--itpings--BackgroundColor);
+        }
+
+        itpings-chart .itpings-div-title {
+            text-align: left;
+            padding-left: 1em;
+        }
+
+        .chart-wrapper {
+            border: 1px solid;
+            border-color: var(--global--UI-background-color--Color);
+            position: relative;
+            height: inherit;
+            overflow: hidden;
+        }
+
+        itpings-chart CANVAS {
+            xheight: calc(var(--global--article--Rowheight) - 3em);
+        }
+    </style>
+    <style id="ChartInterval">
+        .chart_interval {
+            position: absolute;
+            top: 1px;
+            right: 0;
+        }
+
+        .chart_interval > div {
+            border: 1px solid grey;
+            width: 2.1em;
+            margin-right: 1px;
+            text-align: center;
+            position: relative;
+            float: left;
+            font-size: 9px;
+            background: var(--global--UI-background-color--Color);
+        }
+
+        .chart_interval > div:hover {
+            cursor: pointer;
+            background-color: var(--global--UI-background-color--Color);
+            color: orange;
+            font-weight: 900;
+        }
+
+        .chart_interval > div.selectedInterval {
+            background-color: var(--global--header-text--Color);
+            color: black;
+            font-weight: 900;
+        }
+    </style>
+    <style>
+        /*!*Temperature Image*!*/
+        /*tbody > tr[data-sensorname="temperature_5"] > td[data-column="sensorvalue"]::before {*/
+        /*!*content: url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iaXNvLTg4NTktMSI/PjxzdmcgdmVyc2lvbj0iMS4xIiBpZD0iQ2FwYV8xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiB4PSIwcHgiIHk9IjBweCIgdmlld0JveD0iMCAwIDMyIDMyIiBzdHlsZT0iZW5hYmxlLWJhY2tncm91bmQ6bmV3IDAgMCAzMiAzMjsiIHhtbDpzcGFjZT0icHJlc2VydmUiPjxnPjxnPjxwYXRoIHN0eWxlPSJmaWxsOiMwMzAxMDQ7IiBkPSJNMjAsMjEuNTI3VjQuMDA2QzIwLDEuNzkzLDE4LjIwNSwwLDE2LDBjLTIuMjA5LDAtNCwxLjc4Ny00LDQuMDA2djE3LjUyMWMtMS4yMjgsMS4wOTktMiwyLjY5Ni0yLDQuNDczYzAsMy4zMTIsMi42ODcsNiw2LDZjMy4zMTIsMCw2LTIuNjg4LDYtNkMyMiwyNC4yMjMsMjEuMjI5LDIyLjYyNiwyMCwyMS41Mjd6IE0xNiwzMGMtMi4yMDksMC00LTEuNzkxLTQtNGMwLTEuNDgsMC44MDUtMi43NzMsMi0zLjQ2NVY0LjAwNUMxNCwyLjg5NywxNC44OTYsMiwxNiwyYzEuMTExLDAsMiwwLjg5NywyLDIuMDA1djE4LjUzYzEuMTk1LDAuNjkxLDIsMS45ODQsMiwzLjQ2NUMyMCwyOC4yMDksMTguMjA5LDMwLDE2LDMweiIvPjxwYXRoIHN0eWxlPSJmaWxsOiMwMzAxMDQ7IiBkPSJNMTYuOTg0LDIzLjE2NkMxNi45OTUsMjMuMTExLDE3LDIzLjA1NSwxNywyMi45OTd2LTkuOTk0QzE3LDEyLjQ0OSwxNi41NTcsMTIsMTYsMTJjLTAuNTUzLDAtMSwwLjQ1Ni0xLDEuMDAzdjkuOTk0YzAsMC4wNTgsMC4wMDUsMC4xMTQsMC4wMTQsMC4xNjlDMTMuODQyLDIzLjU3MywxMywyNC42ODgsMTMsMjZjMCwxLjY1NywxLjM0MywzLDMsM3MzLTEuMzQzLDMtM0MxOSwyNC42ODgsMTguMTU4LDIzLjU3MywxNi45ODQsMjMuMTY2eiIvPjwvZz48L2c+PGc+PC9nPjxnPjwvZz48Zz48L2c+PGc+PC9nPjxnPjwvZz48Zz48L2c+PGc+PC9nPjxnPjwvZz48Zz48L2c+PGc+PC9nPjxnPjwvZz48Zz48L2c+PGc+PC9nPjxnPjwvZz48Zz48L2c+PC9zdmc+);*!*/
+        /*}*/
+
+        /*!*RSSI Signal Strength Image*!*/
+        /*tbody > tr > td[data-column="rssi"]::before {*/
+        /*!*content: url(data:image/svg+xml;utf8;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iaXNvLTg4NTktMSI/Pgo8IS0tIEdlbmVyYXRvcjogQWRvYmUgSWxsdXN0cmF0b3IgMTYuMC4wLCBTVkcgRXhwb3J0IFBsdWctSW4gLiBTVkcgVmVyc2lvbjogNi4wMCBCdWlsZCAwKSAgLS0+CjwhRE9DVFlQRSBzdmcgUFVCTElDICItLy9XM0MvL0RURCBTVkcgMS4xLy9FTiIgImh0dHA6Ly93d3cudzMub3JnL0dyYXBoaWNzL1NWRy8xLjEvRFREL3N2ZzExLmR0ZCI+CjxzdmcgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIiB4bWxuczp4bGluaz0iaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayIgdmVyc2lvbj0iMS4xIiBpZD0iQ2FwYV8xIiB4PSIwcHgiIHk9IjBweCIgd2lkdGg9IjE2cHgiIGhlaWdodD0iMTZweCIgdmlld0JveD0iMCAwIDM5Mi42MzQgMzkyLjYzNCIgc3R5bGU9ImVuYWJsZS1iYWNrZ3JvdW5kOm5ldyAwIDAgMzkyLjYzNCAzOTIuNjM0OyIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+CjxnPgoJPHBhdGggZD0iTTM3Mi4yMDIsMGgtNTUuNzk3Yy01LjMzNywwLTkuNjYsNC4zMTktOS42Niw5LjY1NXY4Ny40NTZjMC01LjMzNS00LjMyMi05LjY1OC05LjY2NC05LjY1OGgtNTUuNzk3ICAgYy01LjMzNiwwLTkuNjY5LDQuMzIzLTkuNjY5LDkuNjU4djUzLjk2Yy0xLjc2Mi0yLjEzNS00LjQwNS0zLjUyNS03LjM5My0zLjUyNWgtNTUuODAzYy01LjMzLDAtOS42NTYsNC4zMjYtOS42NTYsOS42NjF2NjguNjc3ICAgYzAtNS4zMy00LjMyNi05LjY1My05LjY2Ny05LjY1M0g5My4zYy01LjMzMywwLTkuNjU4LDQuMzE3LTkuNjU4LDkuNjUzdjUzLjk2NGMtMS43NzEtMi4xMzQtNC40MS0zLjUyMy03LjQwNS0zLjUyM0gyMC40NCAgIGMtNS4zMzMsMC05LjY2NSw0LjMxNy05LjY2NSw5LjY1OHY5Ni45OTFjMCw1LjMzMSw0LjMyNiw5LjY2LDkuNjY1LDkuNjZsMzUxLjc2MS0wLjIwNWM1LjMyOCwwLDkuNjU3LTQuMzIzLDkuNjU3LTkuNjY0VjkuNjU1ICAgQzM4MS44NTMsNC4zMjYsMzc3LjUzLDAsMzcyLjIwMiwweiBNNzIuOTIxLDM3Ni4xMkgyNi43Nzl2LTgwLjQ3OWg0Ni4xNDNWMzc2LjEyeiBNMTQ1LjE4OCwzNzYuMTJIOTkuMDVWMjM2LjA4M2g0Ni4xMzhWMzc2LjEyeiAgICBNMjIwLjQzMSwzNzYuMTJoLTQ2LjE0VjE2MS41aDQ2LjE0VjM3Ni4xMnogTTI5NC4xNjIsMzc2LjEyaC00Ni4xNDFWMTAzLjAxOWg0Ni4xNDFWMzc2LjEyeiBNMzY2LjE5OCwzNzYuMTJoLTQ2LjEzMlYxNi42MzggICBoNDYuMTMyVjM3Ni4xMnoiIGZpbGw9IiMwMDAwMDAiLz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8Zz4KPC9nPgo8L3N2Zz4K)*!*/
+        /*}*/
+    </style>
+    <style id="leftColorSquareDeviceID">
+        /* display TTN device id */
+        span[data-column='dev_id'] {
+            text-align: left;
+            display: block;
+            width: 14em;
+        }
+
+        /* display square left of device id, color will be set bij itpings-chart */
+        span[data-column='dev_id']:before {
+            content: "";
+            display: inline-block;
+            width: var(--global--device-color-square-Width);
+            height: var(--global--device-color-square-Height);
+            margin-top: 0;
+            margin-right: 1px;
+            border: 1px solid darkgreen;
+        }
+    </style>
+
+    <!-- style definitions controlled by JS script -->
+    <style id="DynamicDeviceColors">
+        /* This style definition will be filled by JavaScript */
+    </style>
+
     <!-- run script after CSS declarations, because script references above/existing styles -->
     <script language="JavaScript" src="ITpings_dashboard.js"></script>
 </head>
 <body>
-<table class="ITpings-dashboard">
-    <thead>
-    <tr>
-        <th colspan="3">
-            <div class="applicationTitle">ITpings Dashboard
-                <!--<button id="dropDatabase">Drop Database</button>-->
-                <!--<button id="createDatabase">Create Database</button>-->
-                <div class="github"><a href="https://github.com/Danny-Engelman/ITpings">Available On GitHub</a></div>
-            </div>
-            <script>
-                let key = 'YOUR_PRIVATE_KEY';// but you better not use this on a public website!
-                let __addClick = (selector, action) => {
-                    let element = document.querySelector(selector);
-                    if (element) {
-                        element.addEventListener('click', _ => {
-                            if (confirm('Really??')) document.location = './ITpings_connector.php?action=' + action + '&key=' + key;
-                        });
-                    }
-                };
-                __addClick('#dropDatabase', 'drop');
-                __addClick('#createDatabase', 'create');
-            </script>
-        </th>
-    </tr>
-    </thead>
-    <tbody>
-    <tr><!-- Top row -->
-        <td>
-            <itpings-table query="DBInfo" title="ITpings Database Info" noscroll></itpings-table>
-        </td>
-        <td colspan="2">
-            <!--<itpings-table query="SensorValues" title="SensorValues"></itpings-table>-->
-        </td>
-        <td>
-            <itpings-chart sensorname="temperature_5" interval="H2"></itpings-chart>
-        </td>
-    </tr>
-    <tr><!-- Middle row -->
-        <td>
-            <!--<itpings-table query="applications" title="All Applications"></itpings-table>-->
+<div class="grid_container">
+    <header class="header">
+        <div class="applicationTitle">ITpings Dashboard
+            <!--<button id="dropDatabase">Drop Database</button>-->
+            <!--<button id="createDatabase">Create Database</button>-->
+        </div>
+        <script>
+            let key = 'YOUR_PRIVATE_KEY';// but you better not use this on a public website!
+            let __addClick = (selector, action) => {
+                let element = document.querySelector(selector);
+                if (element) {
+                    element.addEventListener('click', _ => {
+                        if (confirm('Really??')) document.location = './ITpings_connector.php?action=' + action + '&key=' + key;
+                    });
+                }
+            };
+            __addClick('#dropDatabase', 'drop');
+            __addClick('#createDatabase', 'create');
+        </script>
+    </header>
+    <aside class="sidebar">Sidebar</aside>
+    <article class="article-container">
+        <!--row 1-->
+        <div class="top_left">
+            <itpings-table query="DBInfo" title="ITpings Database Info" fullheight></itpings-table>
             <itpings-table query="Devices" title="All Devices"></itpings-table>
-        </td>
-        <td colspan="2">
-            <itpings-table query="PingedGateways" title="Pinged Gateways"></itpings-table>
-        </td>
-        <td>
-            <!--<itpings-chart chartid="luminosity" sensorname="luminosity_6" interval="H6"></itpings-chart>-->
-        </td>
-    </tr>
-    <tr><!-- Bottom row -->
-        <td colspan="2">
-            <itpings-table query="Events" title="ITpings Events"></itpings-table>
-        </td>
-        <td colspan="2">
             <!--<itpings-table query="Gateways" title="All Gateways"></itpings-table>-->
-        </td>
-    </tr>
-
-    </tbody>
-</table>
+            <!--<itpings-table query="locations" title="Locations"></itpings-table>-->
+        </div>
+        <!--<itpings-table class="top_center" query="SensorValues" title="SensorValues"></itpings-table>-->
+        <itpings-table class="top_center" query="PingedDevices" title="Pinged Devices"></itpings-table>
+        <itpings-chart class="top_right" sensorname="temperature%" title="Temperatures" interval="2H"></itpings-chart>
+        <!--row 2-->
+        <itpings-table class="middle_center" query="PingedGateways" title="Pinged Gateways"></itpings-table>
+        <itpings-chart class="middle_right" sensorname="luminosity_6,light" title="Light" interval="6H"></itpings-chart>
+        <!--row 3-->
+        <itpings-table class="bottom_left" query="Events" title="ITpings Events"></itpings-table>
+        <itpings-chart class="bottom_center_right" sensorname="analog_in_4,battery" title="Battery"
+                       interval="6H"></itpings-chart>
+        <itpings-chart class="bottom_right" sensorname="rssi" title="RSSI" interval="6H"></itpings-chart>
+    </article>
+    <footer class="footer">
+        <div class="ITpings_motto">(C) MIT-B(eer) License by: Danny Engelman &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+            ITpings is built with CSS4, HTML5 and ES6 and works best in Chrome
+            &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+            <span>Source code is
+                <a target="_blank" href="https://github.com/Danny-Engelman/ITpings">ITpings is available on GitHub</a></span>
+        </div>
+    </footer>
+</div>
 </body>
 </html>

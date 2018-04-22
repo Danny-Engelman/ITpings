@@ -1632,7 +1632,7 @@ $QueryStringParameters = array();
 parse_str($_SERVER['QUERY_STRING'], $QueryStringParameters);
 
 if (CREATE_DATABASE_ON_FIRST_PING) {
-    $sql = "SELECT * FROM information_schema . tables WHERE table_name LIKE '" . TABLE_PREFIX . "%' ORDER BY TABLE_TYPE ASC";
+    $sql = "SELECT * FROM information_schema . tables WHERE table_name LIKE '" . TABLE_PREFIX . "%' AND table_type = 'BASE TABLE'";
     $ITpings_DatabaseInfo = SQL_Query($sql);
     if (!$ITpings_DatabaseInfo) {
         create_ITpings_Tables();

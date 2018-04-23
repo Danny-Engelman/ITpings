@@ -1727,7 +1727,7 @@ function post_process_Query($table_name, $sql)
                                 }
 
                                 $glue = QUERY_PARAMETER_SEPARATOR;
-                                $where .= implode($glue, array_map(convertValue, explode($glue, $parameter_value)));
+                                $where .= implode($glue, array_map('convertValue', explode($glue, $parameter_value)));
                                 $where .= ")";
                             } else {
                                 $parameter_value = (is_numeric($parameter_value) ? Valued($parameter_value) : Quoted($parameter_value));

@@ -4,12 +4,23 @@ For beginner and advanced developers:
 
 * ITpings Is the **PHP [HTTP Integration](https://www.thethingsnetwork.org/docs/applications/http/)** from The Things Network to **your own MySQL database**
 * ITpings **Creates the (normalized) MySQL Database Schema for you**
-* ITpings Is the **(simple) Dashboard API for your Web Front-end** (written in ES6, so Chrome only for now) 
+* ITpings Is the **(simple) Dashboard API for your Web Front-end** (written in ES6, so Chrome only for now)
+* ITpings has **no** dependencies on any Framework 
 
-**Alternative technologies:**
+## Difference between MQTT and the HTTP Intergration
 
+MQTT (publish/subscribe) was developed for low bandwidth, low power communication between devices.
+The MQTT Broker **pushes** data to the client on an (always) open TCP connection
+https://www.hivemq.com/blog/how-to-get-started-with-mqtt
+
+With an HTTP (request/response) Integration the Broker **pushes** data to a Webhook. Clients request 
+
+## **Alternative technologies:**
+
+* TTNMon [BackEnd](https://github.com/RobinMeis/TTNmon-Backend) (PHP/MySQL) and [FrontEnd](https://github.com/RobinMeis/TTNmon-Frontend) (JQuery,Bootstrap,datatables)  
+Does **not** store the payload, so no graphing of Temperature, Luminosity or other sensor values
 * [Store data in MySQL using MQTT and Node-Red](https://ictoblog.nl/2017/04/15/ttn-mqtt-node-red-mysql-local-backup-of-your-lorawan-data)  
-This stores your data in **one** Database Table, ITpings uses a more advanced Database Schema
+Stores your data in **one** Database Table, ITpings uses a more advanced Database Schema
 * [MQTT-NodeJS-MySQL](https://github.com/Kaasfabriek/TTN-MQTT-To-MYSQL-AND-PHP-To-CSV)  
 also a single MySQL Table 
 * [Visualize and push your IoT data](https://www.thethingsnetwork.org/forum/t/visualize-and-push-your-iot-data/1788)  
@@ -251,3 +262,18 @@ If you can access your MySQL server remotely (*you may have to ask your ISP to o
 ### Further reading
 
 * https://mongoose-os.com/blog/why-mqtt-is-getting-so-popular-in-iot/
+
+#Uglify options
+
+add ES6 CustomElements to ``../tools/domprops.json`` file:
+
+``
+    "customElements",
+    "define",
+    "observedAttributes",
+    "attributeChangedCallback",
+    "connectedCallback",
+    "isConnected",
+    "disconnectedCallback",
+    "adoptedCallback"
+``

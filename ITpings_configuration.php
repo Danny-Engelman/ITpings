@@ -38,8 +38,8 @@ define('SQL_LIMIT_DEFAULT', 30);
 
 // field `downlink_url` is of no use once it can't be used anymore to downlink data to a Node
 // To save database space these fields can be reset to empty values
-// eg. 60 means 60th Ping in the past will be reset to empty values
-define('PURGE_PINGCOUNT', 60);
+// eg. 3 Devices each pinging every minute = 3*60 = 180 pings (1 hour) will be saved
+define('PURGE_PINGCOUNT', 180);
 
 // MySQL version 5.6.4 with DATETIME(6) is required to save ping.meta_time in Time with milliseconds
 // https://dev.mysql.com/doc/refman/5.6/en/fractional-seconds.html
@@ -49,7 +49,7 @@ define('PURGE_PINGCOUNT', 60);
 // Not quite sure yet how to deal with Altitude
 // ping metadata location info is stored in a separate Table __locations
 // to supress reports for different Altitude for a given lat/lon location set to FALSE
-define('CHECK_ALTITUDE_IN_PING', TRUE);
+define('CHECK_THE_ALTITUDE_IN_PING', TRUE);
 
 // add extra JSON output to trace what ITpings connector does
 // handy for debugging QueryString Parameters to SQL parser in connector.php
@@ -91,6 +91,10 @@ define('TABLE_PINGEDGATEWAYS', TABLE_PREFIX . 'pinged_gateways');
 define('TABLE_SENSORS', TABLE_PREFIX . 'sensors');
 define('TABLE_SENSORVALUES', TABLE_PREFIX . 'sensorvalues');
 
+// Data Tables
+define('TABLE_TEMPERATURE', TABLE_PREFIX . 'data_temperature');
+define('TABLE_LUMINOSITY', TABLE_PREFIX . 'data_luminosity');
+
 // All Tables, order complies with referential integrity, so DROP TABLE is executed in correct order
 $_ITPINGS_TABLES = array(
     TABLE_ORIGINS
@@ -116,7 +120,7 @@ $_ITPINGS_TABLES = array(
  * Database Schema TYPE standards MATCHING the TTN JSON fieldnames, CHANGE with CARE!
  **/
 
-define('TYPE_FOREIGNKEY', 'INT UNSIGNED');
+define('TYPE_FOREIGNKEY', 'INT UNSIGNED');// todo minimize to SMALLINT UNSIGNED?
 define('TYPE_FOREIGNKEY_LOOKUPTABLE', 'TINYINT UNSIGNED');
 
 define('TYPE_VARCHAR_ID_FIELD', 'VARCHAR(512)');       // ?? what are the TTN maximums?
@@ -292,6 +296,9 @@ $_DBFIELD_SENSORNAME = [ITPINGS_SENSORNAME, 'VARCHAR(256)', "TTN Payload key"]; 
 define('ITPINGS_SENSORVALUE', 'sensorvalue');
 $_DBFIELD_SENSORVALUE = [ITPINGS_SENSORVALUE, 'VARCHAR(256)', 'TTN Payload value'];      // key value in JSON payload
 
+define('ITPINGS_SENSOR_TEMPERATURE_VALUE', 'value');
+$_DBFIELD_SENSOR_TEMPERATURE_VALUE = [ITPINGS_SENSOR_TEMPERATURE_VALUE, 'DECIMAL(3,1)', 'Temperature'];
+
 /**
  * Foreign keys are not for performance,
  * they sure help with debugging,
@@ -332,7 +339,7 @@ define('ENUM_EVENTTYPE_NewView', 'NewView');
 define('ENUM_EVENTTYPE_Log', 'Log');
 define('ENUM_EVENTTYPE_Trigger', 'Trigger');
 define('ENUM_EVENTTYPE_Error', 'Error');
-//convert array to quoted string as SQL ENUM definition
+//convert array to quoted string as SQL ENUM definition, to be used in Events Table definition below
 $_TYPE_EVENTTYPE = sprintf("ENUM('%s')", implode("','", array(
     ENUM_EVENTTYPE_NewApp
 , ENUM_EVENTTYPE_NewDevice
@@ -381,6 +388,8 @@ define('VIEWNAME_SENSORVALUES_UPDATE', TABLE_PREFIX . 'SensorValuesUpdate'); // 
 define('VIEWNAME_GATEWAYS', TABLE_PREFIX . 'Gateways');
 define('VIEWNAME_PINGEDDEVICES', TABLE_PREFIX . 'PingedDevices');
 define('VIEWNAME_PINGEDGATEWAYS', TABLE_PREFIX . 'PingedGateways');
+define('VIEWNAME_TEMPERATURE', TABLE_PREFIX . 'Temperature');
+define('VIEWNAME_LUMINOSITY', TABLE_PREFIX . 'Luminosity');
 
 // Loop all names in front-end query check
 // and Loop all names in DROP VIEW action
@@ -453,6 +462,7 @@ define('SQL_QUERY_ApplicationDevices', 'Devices');
 define('SQL_QUERY_DatabaseInfo', 'DBInfo');
 define('SQL_QUERY_RecentIDs', 'IDs'); // smallest JSON payload as possible
 define('SQL_QUERY_RecentPingID', 'PingID'); // smallest JSON payload as possible
+define('SQL_QUERY_Ping', 'ping'); // display single POST ping
 
 //endregion == DATABASE SCHEMA AND CONFIGURATION ==================================================
 

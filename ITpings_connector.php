@@ -598,12 +598,13 @@ function create_ITpings_Tables()
 
 //region ===== CREATE ITPINGS DATABASE : VIEWS ====================================================
 
+function echoView($sql)
+{
+    echo "<pre>" . $sql . "</pre>";
+}
+
 function Create_Or_Replace_View($view_name)
 {
-    function echoView($sql)
-    {
-        echo "<pre>" . $sql . "</pre>";
-    }
 
 //    function JOIN($table, $as_1, $as_2, $key)
 //    {

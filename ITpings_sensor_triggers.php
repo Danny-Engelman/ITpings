@@ -1,7 +1,7 @@
 <?php
 /**
  * process sensor values
-**/
+ **/
 //region ===== CUSTOMIZABLE SENSOR TRIGGERS =======================================================
 
 function sendEmail($to, $subject, $message)
@@ -100,7 +100,8 @@ function process_SensorValue($sensor_ID, $sensor_name, $sensor_value)
         case 'temperature':
         case TTN_Cayenne_temperature:
             SQL_INSERT(TABLE_TEMPERATURE, [$pingID, $request[PRIMARYKEY_Device], $sensor_value]);
-            //return true;// todo do not store value in other table (sensorvalues) also
+            /** When returning true the value is NOT stored in Table_SensorValues (below) **/
+            //return true;
             break;
 
         default:

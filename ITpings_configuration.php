@@ -120,7 +120,7 @@ $_ITPINGS_TABLES = array(
  * Database Schema TYPE standards MATCHING the TTN JSON fieldnames, CHANGE with CARE!
  **/
 
-define('TYPE_FOREIGNKEY', 'INT UNSIGNED');// todo minimize to SMALLINT UNSIGNED?
+define('TYPE_FOREIGNKEY', 'INT UNSIGNED');
 define('TYPE_FOREIGNKEY_LOOKUPTABLE', 'TINYINT UNSIGNED');
 
 define('TYPE_VARCHAR_ID_FIELD', 'VARCHAR(512)');       // ?? what are the TTN maximums?
@@ -459,7 +459,7 @@ $_VALID_QUERY_PARAMETERS = [
 //PREDEFINED QUERIES
 define('NO_SQL_QUERY', 'none');
 define('SQL_QUERY_ApplicationDevices', 'Devices');
-define('SQL_QUERY_DatabaseInfo', 'DBInfo');
+define('SQL_QUERY_DatabaseInfo_ITpings_Tables', 'DBInfo');
 define('SQL_QUERY_RecentIDs', 'IDs'); // smallest JSON payload as possible
 define('SQL_QUERY_RecentPingID', 'PingID'); // smallest JSON payload as possible
 define('SQL_QUERY_Ping', 'ping'); // display single POST ping

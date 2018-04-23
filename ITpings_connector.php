@@ -1061,11 +1061,8 @@ function process_Ping_and_Gateway_Location($lat, $lon, $alt, $location_source)
  */
 function find_Nearest_Gateway_With_Same_ID($gtw_id, $latitude, $longitude)
 {
-    // todo: refactor: use __locations table for Gateway location too
-    // select from View Gateways, Join on gateways+locations
-    // or select from locations, then find id in Gateways
-
     $sql = "SELECT * ";
+
     if ($latitude) {
         $GTWradLAT = deg2rad($latitude);
         $GTWradLON = deg2rad($longitude);
@@ -1075,11 +1072,10 @@ function find_Nearest_Gateway_With_Same_ID($gtw_id, $latitude, $longitude)
         $sql .= " * sin(radians(" . ITPINGS_LATITUDE . ")))) AS distance";
     }
 
-    //$sql .= " FROM " . VIEWNAME_PINGEDGATEWAYS . " WHERE " . ITPINGS_GATEWAY_ID . " = " . Quoted($gtwid); // todo replace PingedGateways with faster SQL
     $sql .= " FROM " . VIEWNAME_GATEWAYS . " WHERE " . ITPINGS_GATEWAY_ID . " = " . Quoted($gtw_id);
 
     if ($latitude) { // GPS has inaccurate fixes, to prevent 'moving' Gateway recordings a tolerance for lat/lon is calculated
-        $sql .= " HAVING distance < " . GATEWAY_POSITION_TOLERANCE . " ORDER BY distance;";
+        $sql .= " HAVING distance < " . GATEWAY_POSITION_TOLERANCE . " ORDER BY distance;"; // default 0.02 = 20 meter
     } else {
         $sql .= " ORDER BY " . PRIMARYKEY_Gateway . " DESC;";
     }
@@ -1349,7 +1345,6 @@ function attach_Max_IDs_to_JSON_response()
         return $value;
     }
 
-    //todo: clean up MAXID PHP code, make generic for any query
     MAXID(TABLE_APPLICATIONS, PRIMARYKEY_Application);
     MAXID(TABLE_DEVICES, PRIMARYKEY_Device);
     $event_pingid = MAXID(TABLE_EVENTS, PRIMARYKEY_Ping);
@@ -1364,8 +1359,11 @@ function attach_Max_IDs_to_JSON_response()
     MAXID(VIEWNAME_PINGEDDEVICES, PRIMARYKEY_Ping, $pingid);
     MAXID(VIEWNAME_EVENTS, PRIMARYKEY_Ping, $event_pingid);
     MAXID(VIEWNAME_GATEWAYS, PRIMARYKEY_Gateway, $gtwid);
-
 }
+
+/**
+ * Manage Database
+ **/
 
 function Delete_By_Key_Value($table, $key, $value)
 {
@@ -1394,7 +1392,7 @@ function Delete_By_Ping_ID($pingID)
     Delete_By_Key_Value(TABLE_SENSORVALUES, PRIMARYKEY_Ping, $pingID);
     Delete_By_Key_Value(TABLE_PINGEDGATEWAYS, PRIMARYKEY_Ping, $pingID);
     Delete_By_Key_Value(TABLE_PINGS, PRIMARYKEY_Ping, $pingID);
-//    Todo: clean locations
+    Delete_Unreferenced(TABLE_LOCATIONS, PRIMARYKEY_ApplicationDevice, TABLE_PINGS);
 }
 
 function Delete_By_ApplicationDeviceID($_appdevid)
@@ -1422,6 +1420,12 @@ function Delete_POST_Requests_without_Event()
     SQL_DELETE($sql);
 }
 
+
+/**
+ * Execute queries defined as ?query=[name] URI parameter
+ *
+ * @return string - $sql
+ */
 function process_Predefined_Query()
 {
     global $QueryStringParameters;
@@ -1429,7 +1433,33 @@ function process_Predefined_Query()
     $sql = EMPTY_STRING;
 
     switch ($QueryStringParameters['query']) {
-        case SQL_QUERY_ApplicationDevices: // query=Devices
+
+        /** every heartbeat milliseconds The Dashboard polls for a sinle maximum _pingid **/
+        case SQL_QUERY_RecentPingID: // query=PingID   // smallest JSON payload as possible, single pingID
+            exit(SQL_Query("SELECT MAX(" . PRIMARYKEY_Ping . ") AS ID FROM " . TABLE_PINGS)['ID']);
+            break;
+
+        /** when the _pingid has increased the Dashboard polls for all Table/View ID values **/
+        case SQL_QUERY_RecentIDs: // query=IDs   // all relevant IDs , smallest JSON payload as possible
+            attach_Max_IDs_to_JSON_response();
+            $sql = NO_SQL_QUERY;
+            break;
+
+        /** return full TTN JSON request from POSTrequests Table **/
+        case SQL_QUERY_Ping:
+            $pingid = $QueryStringParameters[PRIMARYKEY_Ping];
+            $sql = "SELECT " . ITPINGS_POST_body . " from " . TABLE_POSTREQUESTS . " WHERE " . PRIMARYKEY_Ping . "=$pingid";
+            $body = SQL_Query($sql)['body'];
+            if ($body) {
+                print $body;
+                exit();
+            } else {
+                exit("Sorry,  " . PRIMARYKEY_Ping . "=$pingid has already been purged from " . TABLE_POSTREQUESTS);
+            }
+            break;
+
+        /** ?query=Devices **/
+        case SQL_QUERY_ApplicationDevices:
             $sql = "SELECT AD . " . PRIMARYKEY_ApplicationDevice;
             $sql .= " ,AD . " . ITPINGS_APPLICATION_ID;
             $sql .= " ,AD . " . ITPINGS_DESCRIPTION;
@@ -1449,7 +1479,9 @@ function process_Predefined_Query()
                 $sql .= process_QueryParameter_Filter('', ' AND AD.', $QueryStringParameters[QUERY_PARAMETER_FILTER]);
             }
             break;
-        case SQL_QUERY_DatabaseInfo: // query=DBInfo
+
+        /** ?query=DBInfo **/
+        case SQL_QUERY_DatabaseInfo_ITpings_Tables:
             attach_Max_IDs_to_JSON_response();
             $sql = "SELECT REPLACE(S . TABLE_NAME, '" . TABLE_PREFIX . "', '') AS 'Table'";
             $sql .= ",S . TABLE_ROWS AS Rows";
@@ -1460,24 +1492,20 @@ function process_Predefined_Query()
             $sql .= " AND TABLE_TYPE = 'BASE TABLE'";
             $sql .= " ORDER BY DataLength ASC";
             break;
-        case SQL_QUERY_RecentIDs: // query=IDs   // all relevant IDs , smallest JSON payload as possible
-            attach_Max_IDs_to_JSON_response();
-            $sql = NO_SQL_QUERY;
-            break;
-        case SQL_QUERY_RecentPingID: // query=PingID   // smallest JSON payload as possible, single pingID
-            exit(SQL_Query("SELECT MAX(" . PRIMARYKEY_Ping . ") AS ID FROM " . TABLE_PINGS)['ID']);
-            break;
-        case SQL_QUERY_Ping:    // return TTN JSON request
-            $pingid = $QueryStringParameters[PRIMARYKEY_Ping]; // todo use max _pingd by default
-            $sql = "SELECT " . ITPINGS_POST_body . " from " . TABLE_POSTREQUESTS . " WHERE " . PRIMARYKEY_Ping . "=$pingid";
-            $body = SQL_Query($sql)['body'];
-            if ($body) {
-                print $body;
-                exit();
-            } else {
-                exit("Sorry,  " . PRIMARYKEY_Ping . "=$pingid has already been purged from " . TABLE_POSTREQUESTS);
+
+
+        /** Delete queries, called from Dashboard */
+
+        /** ?query=DeletePing&_pingid=[id] */
+        case 'DeletePingID':
+            $pingid = $QueryStringParameters[PRIMARYKEY_Ping];
+            if ($pingid) {
+                Delete_By_Ping_ID($pingid);
             }
             break;
+
+        /** Delete queries, to be called by handcrafting the URI */
+
         case 'DeleteNullPings':
             $sql = "SELECT * FROM " . TABLE_PINGS . " P";
             $sql .= " JOIN " . TABLE_POSTREQUESTS . " PR ON PR." . PRIMARYKEY_Ping . " = P." . PRIMARYKEY_Ping;
@@ -1493,17 +1521,17 @@ function process_Predefined_Query()
                 }
             }
             break;
+
+        /** ?query=DeleteApplicationByID&appid=9 **/
         case 'DeleteApplicationByID':
-            Delete_By_ApplicationDeviceID(9);//todo remove hardcode id value
+            $appid = $QueryStringParameters[PRIMARYKEY_Application];
+            if ($appid) Delete_By_ApplicationDeviceID($appid);
             break;
+
         case 'DeleteProcessedPOSTrequests':
             Delete_POST_Requests_without_Event();
             break;
-        case 'DeletePingID':
-            Delete_By_Ping_ID($QueryStringParameters[PRIMARYKEY_Ping]);
-            break;
 
-        // DELETE FROM ITpings__POSTrequests WHERE _postid NOT IN(SELECT _pingid FROM ITpings__pings)
         // SELECT * FROM ITpings.ITpings__PingedGateways where time='0000-00-00 00:00:00';
 
     }
@@ -1512,6 +1540,7 @@ function process_Predefined_Query()
 }
 
 /**
+ * Process QueryString part for LT and GT like operators; and return a valid SQL $where clause
  * @param $where
  * @param $and
  * @param $parameter_value
@@ -1550,6 +1579,7 @@ function QueryTrace($key, $value)
     $JSON_response['QueryTrace'][$key] = $value;
 }
 
+
 /**
  *
  */
@@ -1559,18 +1589,20 @@ function process_Query_with_QueryString_Parameters()
     global $JSON_response;
     $sql = EMPTY_STRING;
 
-    $queryName = $QueryStringParameters['query'];
-    $table_name = TABLE_PREFIX . $queryName;
+    $table_name = TABLE_PREFIX . $QueryStringParameters['query'];
 
     /** User can only request for limitted table/view names, this is the place to deny access to Tables/Views **/
     switch ($table_name) {
 
         /**!!!!!!!!!!!!!!!!! ALWAYS CREATE OR REPLACE VIEW ON EVERY ENDPOINT CALL !!!!!!!!!!!!!!!!!!!!!!!!!!!!**/
-        //todo: read VIEW NAME to be updated from querystring parameter
-        case 'ALWAYS_CREATE_OR_REPLACE_VIEW':
+
+        //case VIEWNAME_TEMPERATURE:
+        case 'ALWAYS_CREATE_OR_REPLACE_VIEW'://todo: read VIEW NAME to be updated from querystring parameter
             add_JSON_message_to_JSON_response('ViewUpdate: ' . $table_name);
             Create_Or_Replace_View($table_name);
             break;
+
+
 
         /**  regular View/Table names **/
         case VIEWNAME_TEMPERATURE:
@@ -1602,24 +1634,42 @@ function process_Query_with_QueryString_Parameters()
             break;
     }
 
+    post_process_Query($table_name,$sql);
+
+}
+
+/**
+ * Continue from previous function(process_Query_with_QueryString_Parameters), built a valid $sql
+ * @param $table_name
+ * @param $sql
+ */
+function post_process_Query($table_name, $sql)
+{
+    global $QueryStringParameters;
+    global $JSON_response;
     global $_VALID_QUERY_PARAMETERS;
     global $_QUERY_ALLOWED_INTERVALUNITS;
 
     if ($table_name) {
-        /** Built a safe SQL query **/
+        /** process all (by ITpings defined!!!) QueryString parameters , so user can not add roque SQL **/
         $where = EMPTY_STRING;
         $order = EMPTY_STRING;
         $limit = EMPTY_STRING;
+
         foreach ($_VALID_QUERY_PARAMETERS as $parameter) {
+
+            /** accept safe parameter values only **/
             $parameter_value = SQL_InjectionSave_OneWordString($QueryStringParameters[$parameter]);
+
             if (ITPINGS_QUERY_TRACE) QueryTrace($parameter, $parameter_value);
             if ($parameter_value) {
                 $PARAMETER_HAS_SEPARATOR = contains($parameter_value, QUERY_PARAMETER_SEPARATOR);
                 $and = $where === EMPTY_STRING ? EMPTY_STRING : " AND ";
+
                 switch ($parameter) {
 
                     case QUERY_PARAMETER_FILTER:
-                        //do NOT add to $where, the function creates a new $where with previous content prepended
+                        //do NOT ADD to $where, the function creates a new $where with previous content prepended
                         $where = process_QueryParameter_Filter($where, $and, $parameter_value);
                         break;
 
@@ -1713,6 +1763,7 @@ function process_Query_with_QueryString_Parameters()
             SQL_Query($sql, TRUE);
         }
     }
+
 }
 
 //endregion == PROCESS GET QUERY ==================================================================

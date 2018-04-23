@@ -638,17 +638,6 @@ function create_ITpings_Tables()
         ]
         , [$_FOREIGNKEY_APPLICATIONDEVICES]
     );
-    create_Table(TABLE_LUMINOSITY
-        , PRIMARYKEY_Ping
-        , TYPE_FOREIGNKEY
-        , [//Fields
-            $_DBFIELD_APPLICATION_DEVICE
-            , $_DBFIELD_SENSORVALUE
-        ]
-        , [$_FOREIGNKEY_APPLICATIONDEVICES]
-    );
-
-
 }//end function createTables
 
 //endregion == CREATE ITPINGS DATABASE : TABLES ===================================================

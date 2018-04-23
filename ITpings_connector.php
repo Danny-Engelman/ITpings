@@ -221,7 +221,7 @@ function SQL_Query($sql, $returnJSON = FALSE)
     $result = mysqli_query($MySQL_DB_Connection, $sql);
     if ($result) {
         if ($returnJSON) {
-            $maxrows = $QueryStringParameters[QUERY_PARAMETER_MAXROWS];
+            $maxrows = $QueryStringParameters[QUERY_PARAMETER_MAXROWS] ?? 0;
             $rows = array();
             if ($maxrows) {
                 $rows = skip_every_Nth_row_From_SQL_result($result, $maxrows);
@@ -1475,7 +1475,7 @@ function process_Predefined_Query()
             $sql .= " GROUP BY " . PRIMARYKEY_ApplicationDevice;
             $sql .= " ) LSV";
             $sql .= " WHERE AD . " . PRIMARYKEY_ApplicationDevice . " = LSV . " . PRIMARYKEY_ApplicationDevice;
-            if ($QueryStringParameters[QUERY_PARAMETER_FILTER]) {
+            if ($QueryStringParameters[QUERY_PARAMETER_FILTER] ?? false) {
                 $sql .= process_QueryParameter_Filter('', ' AND AD.', $QueryStringParameters[QUERY_PARAMETER_FILTER]);
             }
             break;
@@ -1659,7 +1659,7 @@ function post_process_Query($table_name, $sql)
         foreach ($_VALID_QUERY_PARAMETERS as $parameter) {
 
             /** accept safe parameter values only **/
-            $parameter_value = SQL_InjectionSave_OneWordString($QueryStringParameters[$parameter]);
+            $parameter_value = SQL_InjectionSave_OneWordString($QueryStringParameters[$parameter] ?? '');
 
             if (ITPINGS_QUERY_TRACE) QueryTrace($parameter, $parameter_value);
             if ($parameter_value) {
@@ -1831,7 +1831,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 } else { // GET (JSON) request
-    switch ($QueryStringParameters['action']) {
+    switch ($QueryStringParameters['action'] ?? '') {
         case 'drop':
             if (ALLOW_DATABASE_CHANGES) {
                 if (YOUR_ITPINGS_KEY === $QueryStringParameters['key']) {

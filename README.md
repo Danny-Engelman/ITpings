@@ -92,6 +92,11 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 <hr>   
+# ITpings DashBoard with Live data
+
+The Dashboard was built without any Frameworks, using native CSS4 HTML5 and ES6, so runs in Chrome (other Browsers do not support new W3C standards yet)
+
+![](https://i.imgur.com/GjLOl5T.jpg)
 
 # ITpings : Under the hood
 ## (My)SQL Database schema
@@ -241,6 +246,12 @@ In the Table screenshot above Columns and Rows are hidden based on data-attribut
 	</style>
 
 More, see: **[30 CSS Selectors you must memorize](https://code.tutsplus.com/tutorials/the-30-css-selectors-you-must-memorize--net-16048)**
+
+## Tracing the HTML5 Dashboard
+
+Open the F12 Dev Console to see what the Dashboard does:
+
+![](https://i.imgur.com/qVwYMQz.jpg)
 
 <br><br>
 <hr>

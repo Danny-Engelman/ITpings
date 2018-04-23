@@ -9,22 +9,13 @@ For beginner and advanced developers:
 
 ## Difference between MQTT and the HTTP Intergration
 
-MQTT (publish/subscribe) was developed for low bandwidth, low power communication between devices.
+**MQTT (publish/subscribe)** was developed for low bandwidth, low power communication between devices.
 The MQTT Broker **pushes** data to the client on an (always) open TCP connection
-https://www.hivemq.com/blog/how-to-get-started-with-mqtt
+[https://www.hivemq.com/blog/how-to-get-started-with-mqtt](https://www.hivemq.com/blog/how-to-get-started-with-mqtt)  
+► MQTT requires authentication **per** device
 
-With an HTTP (request/response) Integration the Broker **pushes** data to a Webhook. Clients request 
-
-## **Alternative technologies:**
-
-* TTNMon [BackEnd](https://github.com/RobinMeis/TTNmon-Backend) (PHP/MySQL) and [FrontEnd](https://github.com/RobinMeis/TTNmon-Frontend) (JQuery,Bootstrap,datatables)  
-Does **not** store the payload, so no graphing of Temperature, Luminosity or other sensor values
-* [Store data in MySQL using MQTT and Node-Red](https://ictoblog.nl/2017/04/15/ttn-mqtt-node-red-mysql-local-backup-of-your-lorawan-data)  
-Stores your data in **one** Database Table, ITpings uses a more advanced Database Schema
-* [MQTT-NodeJS-MySQL](https://github.com/Kaasfabriek/TTN-MQTT-To-MYSQL-AND-PHP-To-CSV)  
-also a single MySQL Table 
-* [Visualize and push your IoT data](https://www.thethingsnetwork.org/forum/t/visualize-and-push-your-iot-data/1788)  
-A long.. long.. list of IoT related tools
+With an **HTTP (request/response) Integration** the (TTN) Broker **pushes** all data to a Webhook/Endpoint.  
+► **No** authentication (per device) required 
 
 ## Use ITpings HTTP Integration and Dashboard in (under) 5 minutes
 
@@ -92,11 +83,33 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 <hr>   
-# ITpings DashBoard with Live data
+# ITpings Front-End Dashboard with Live data
 
-The Dashboard was built without any Frameworks, using native CSS4 HTML5 and ES6, so runs in Chrome (other Browsers do not support new W3C standards yet)
+The MySQL Database Schema is the major part of this application.
+
+I have included a simple Dashboard so something is shown the moment you install this application.  
+
+To make this work on any LAMP (or xxMP) stack, the Dashboard uses oldskool AJAX short-polling for (almost live) updates.
+
+Instead of using MQTT (requires registration of every device) ITpings Dashboard polls the MySQL database every 500ms (return value is a single ping id, so including Headers is only 257 **Bytes** of traffic)  
+Only when the database has new values the IT-pings Table and Chart ([HTML5 WebComponents/Custom Elements](https://developers.google.com/web/fundamentals/web-components/)) are updated
+
+For your own more complex Dashboard I suggest looking into [MQTT](https://www.thethingsnetwork.org/docs/applications/mqtt/) and [WebSockets](http://blog.teamtreehouse.com/an-introduction-to-websockets)
+
+The Dashboard was built **without any Frameworks**  
+Using only native CSS4 HTML5 and ES6;  
+So (for now) runs in Chrome only (other Browsers do not support new W3C standards yet)
 
 ![](https://i.imgur.com/GjLOl5T.jpg)
+
+## Tracing the HTML5 Dashboard
+
+Open the F12 Dev Console to see what the Dashboard does:
+
+![](https://i.imgur.com/qVwYMQz.jpg)
+
+<br><br>
+<hr>
 
 # ITpings : Under the hood
 ## (My)SQL Database schema
@@ -146,19 +159,9 @@ Outputting data as:
 * PingedGateways
 * SensorValues
 * Gateways
+* Events
 
 And you can add your own in the ``ITpings_connector.php`` PHP script.
-
-# ITpings Front-End Dashboard
-
-The MySQL Database schema is the major part of this application.
-
-I have included my (very simple) Dashboard so something is shown the moment you install this application.  
-By the MIT license, you may use the provided ``itpings-table`` and ``itpings-graph`` [CustomElements](https://developers.google.com/web/fundamentals/web-components/customelements) (a W3C standard not yet supported in IE)  
-
-To make this work on any LAMP stack, the Dashboard uses oldskool AJAX short-polling for (almost live) updates.
-
-For your own more complex Dashboard I suggest looking into modern [WebSockets](http://blog.teamtreehouse.com/an-introduction-to-websockets)
 
 ## Retrieving data from the MySQL database
 * The ITpings HTTP integration **Creates** data in your MySQL database
@@ -247,15 +250,6 @@ In the Table screenshot above Columns and Rows are hidden based on data-attribut
 
 More, see: **[30 CSS Selectors you must memorize](https://code.tutsplus.com/tutorials/the-30-css-selectors-you-must-memorize--net-16048)**
 
-## Tracing the HTML5 Dashboard
-
-Open the F12 Dev Console to see what the Dashboard does:
-
-![](https://i.imgur.com/qVwYMQz.jpg)
-
-<br><br>
-<hr>
-
 <hr>
 # Misc
 
@@ -270,12 +264,25 @@ If you can access your MySQL server remotely (*you may have to ask your ISP to o
 
 **[RESTer](https://github.com/geekypedia/RESTer)** (or a fork) (MIT license) Not only adds a RESTfull API (remember: is NOT required to use ITpings), but also provides a fast and good enough Admin interface for managing your MySQL database. (it includes an older version of **[Adminer](https://www.adminer.org/)**)  
 
+### **Alternative technologies:**
+
+* TTNMon [BackEnd](https://github.com/RobinMeis/TTNmon-Backend) (PHP/MySQL) and [FrontEnd](https://github.com/RobinMeis/TTNmon-Frontend) (JQuery,Bootstrap,datatables)  
+Does **not** store the payload, so no graphing of Temperature, Luminosity or other sensor values
+* [Store data in MySQL using MQTT and Node-Red](https://ictoblog.nl/2017/04/15/ttn-mqtt-node-red-mysql-local-backup-of-your-lorawan-data)  
+Stores your data in **one** Database Table, ITpings uses a more advanced Database Schema
+* [MQTT-NodeJS-MySQL](https://github.com/Kaasfabriek/TTN-MQTT-To-MYSQL-AND-PHP-To-CSV)  
+also a single MySQL Table 
+* [Visualize and push your IoT data](https://www.thethingsnetwork.org/forum/t/visualize-and-push-your-iot-data/1788)  
+A long.. long.. list of IoT related tools
+
+
 ### Further reading
 
 * https://mongoose-os.com/blog/why-mqtt-is-getting-so-popular-in-iot/
 
-#Uglify options
+# Forking ITpings Building 
 
+### Uglify-ES options
 add ES6 CustomElements to ``../tools/domprops.json`` file:
 
 ``
@@ -288,3 +295,6 @@ add ES6 CustomElements to ``../tools/domprops.json`` file:
     "disconnectedCallback",
     "adoptedCallback"
 ``
+
+### Adding Triggers to ITpings_sensor_triggers.php
+todo: document

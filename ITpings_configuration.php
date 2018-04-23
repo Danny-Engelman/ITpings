@@ -388,6 +388,7 @@ define('VIEWNAME_SENSORVALUES_UPDATE', TABLE_PREFIX . 'SensorValuesUpdate'); // 
 define('VIEWNAME_GATEWAYS', TABLE_PREFIX . 'Gateways');
 define('VIEWNAME_PINGEDDEVICES', TABLE_PREFIX . 'PingedDevices');
 define('VIEWNAME_PINGEDGATEWAYS', TABLE_PREFIX . 'PingedGateways');
+/** New in #alfa 2 , dedicated tables for better performance **/
 define('VIEWNAME_TEMPERATURE', TABLE_PREFIX . 'Temperature');
 define('VIEWNAME_LUMINOSITY', TABLE_PREFIX . 'Luminosity');
 

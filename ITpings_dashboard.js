@@ -1152,7 +1152,7 @@
                                     WC.ChartJS_Lines.push(lineID);                                      // unique sensorid per device
                                 }
                                 let use_datapoint = index === 0 || $_lastNelements(x_time, 1) === "0";
-                                use_datapoint = true;
+                                //use_datapoint = true;
                                 if (use_datapoint) {
                                     ChartJS_labels.push(x_time);
                                     ChartJS_datasets[dataset_idx]["data"].push({

@@ -1,0 +1,37 @@
+{
+  "app_id": "test",
+  "dev_id": "ttn_node_bikeswap-org_001",
+  "hardware_serial": "0004A30B001BCCD0",
+  "port": 2,
+  "counter": 4398,
+  "payload_raw": "DnoAFgbc",
+  "payload_fields": {
+    "battery": 3706,
+    "event": "interval",
+    "light": 22,
+    "temperature": 17.56
+  },
+  "metadata": {
+    "time": "2018-03-22T17:28:26.975526969Z",
+    "frequency": 867.1,
+    "modulation": "LORA",
+    "data_rate": "SF7BW125",
+    "coding_rate": "4/5",
+    "gateways": [
+      {
+        "gtw_id": "eui-0000024b08030c5f",
+        "gtw_trusted": true,
+        "timestamp": 183214227,
+        "time": "",
+        "channel": 3,
+        "rssi": -120,
+        "snr": 0.25,
+        "rf_chain": 0,
+        "latitude": 52.340126,
+        "longitude": 4.917363,
+        "altitude": 40
+      }
+    ]
+  },
+  "downlink_url": "https://integrations.thethingsnetwork.org/ttn-eu/api/v2/down/bikeswap_tracker/itpings365csi?key=ttn-account-v2.mwWTusL5o-H6Us-g3kNkbR5NPbEK74Dq-YXx6gM1FAE"
+}

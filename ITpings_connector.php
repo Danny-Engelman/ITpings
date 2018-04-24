@@ -221,7 +221,7 @@ function SQL_Query($sql, $returnJSON = FALSE)
     $result = mysqli_query($MySQL_DB_Connection, $sql);
     if ($result) {
         if ($returnJSON) {
-            $maxrows = $QueryStringParameters[QUERY_PARAMETER_MAXROWS];
+            $maxrows = $QueryStringParameters[QUERY_PARAMETER_MAXROWS] ?? 0;
             $rows = array();
             if ($maxrows) {
                 $rows = skip_every_Nth_row_From_SQL_result($result, $maxrows);
@@ -638,17 +638,6 @@ function create_ITpings_Tables()
         ]
         , [$_FOREIGNKEY_APPLICATIONDEVICES]
     );
-    create_Table(TABLE_LUMINOSITY
-        , PRIMARYKEY_Ping
-        , TYPE_FOREIGNKEY
-        , [//Fields
-            $_DBFIELD_APPLICATION_DEVICE
-            , $_DBFIELD_SENSORVALUE
-        ]
-        , [$_FOREIGNKEY_APPLICATIONDEVICES]
-    );
-
-
 }//end function createTables
 
 //endregion == CREATE ITPINGS DATABASE : TABLES ===================================================
@@ -1475,7 +1464,7 @@ function process_Predefined_Query()
             $sql .= " GROUP BY " . PRIMARYKEY_ApplicationDevice;
             $sql .= " ) LSV";
             $sql .= " WHERE AD . " . PRIMARYKEY_ApplicationDevice . " = LSV . " . PRIMARYKEY_ApplicationDevice;
-            if ($QueryStringParameters[QUERY_PARAMETER_FILTER]) {
+            if ($QueryStringParameters[QUERY_PARAMETER_FILTER] ?? false) {
                 $sql .= process_QueryParameter_Filter('', ' AND AD.', $QueryStringParameters[QUERY_PARAMETER_FILTER]);
             }
             break;
@@ -1659,7 +1648,7 @@ function post_process_Query($table_name, $sql)
         foreach ($_VALID_QUERY_PARAMETERS as $parameter) {
 
             /** accept safe parameter values only **/
-            $parameter_value = SQL_InjectionSave_OneWordString($QueryStringParameters[$parameter]);
+            $parameter_value = SQL_InjectionSave_OneWordString($QueryStringParameters[$parameter] ?? '');
 
             if (ITPINGS_QUERY_TRACE) QueryTrace($parameter, $parameter_value);
             if ($parameter_value) {
@@ -1727,7 +1716,7 @@ function post_process_Query($table_name, $sql)
                                 }
 
                                 $glue = QUERY_PARAMETER_SEPARATOR;
-                                $where .= implode($glue, array_map(convertValue, explode($glue, $parameter_value)));
+                                $where .= implode($glue, array_map('convertValue', explode($glue, $parameter_value)));
                                 $where .= ")";
                             } else {
                                 $parameter_value = (is_numeric($parameter_value) ? Valued($parameter_value) : Quoted($parameter_value));
@@ -1831,7 +1820,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     }
 } else { // GET (JSON) request
-    switch ($QueryStringParameters['action']) {
+    switch ($QueryStringParameters['action'] ?? '') {
         case 'drop':
             if (ALLOW_DATABASE_CHANGES) {
                 if (YOUR_ITPINGS_KEY === $QueryStringParameters['key']) {

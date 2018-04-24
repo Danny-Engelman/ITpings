@@ -19,7 +19,7 @@ define('ALLOW_DATABASE_CHANGES', TRUE);
 // IP address where Ping came from
 // Let's record for some period and see if it is usefull at all
 // portnumber is different for each call, no need to record
-$ip = ($_SERVER['HTTP_CLIENT_IP'] ?: ($_SERVER['HTTP_X_FORWARDE‌​D_FOR'] ?: $_SERVER['REMOTE_ADDR']));
+$ip = ($_SERVER['HTTP_CLIENT_IP'] ?? ($_SERVER['HTTP_X_FORWARDED_FOR'] ?? $_SERVER['REMOTE_ADDR']));
 define('PING_ORIGIN', $ip);
 
 // CREATE Complete ITpings Database Schema IF it does not exist, set to FALSE to disable the check

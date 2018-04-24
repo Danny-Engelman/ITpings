@@ -62,12 +62,6 @@
 
             sensor: "sensor", //todo: rename back to sensorname in database config?
 
-            Attr_title: "title",
-            Attr_query: "query",
-            Attr_interval: "interval",
-            Attr_refresh: "pulse",
-            Attr_nocache: "nocache",
-
             MINUTE: "MINUTE",
             HOUR: "HOUR",
             DAY: "DAY",
@@ -177,9 +171,11 @@
         let $_isDefined = x => typeof x !== "undefined",
             $_isString = x => typeof x === "string",
             $_isNumber = x => typeof x === "number",
+            $_isArray = x => Array.isArray(x),
 
             /** Array **/
             $_ArrayFrom = x => Array.from(x),
+            $_lastNelements = (arr, n) => arr.slice(-1 * n),
 
             __strReverse = x => [...x].reverse().join``,
             $_CSV2Array = x => x.split`,`,
@@ -233,8 +229,9 @@
             $_localstorage_Get = (key, defaultvalue = false, stored = localStorage.getItem(key)) => stored ? stored : defaultvalue,
             $_localstorage_Set = (key, value) => {
                 try {
+                    let arraycount = $_isArray(value) ? value.length : false;
                     if (!$_isString(value)) value = JSON.stringify(value);
-                    $_logEvent("localstorageSet.orangered", "store", value.length, "bytes as:", key);
+                    $_logEvent("localstorageSet.orangered", "store", arraycount ? arraycount + " rows," : "", value.length, "bytes as:", key);
                     return localStorage.setItem(key, value)
                 } catch (e) {
                     console.error(e);
@@ -483,7 +480,7 @@
 
             constructor(_QM = this) {
                 _QM.maxid = 0;                          // record MAX(_pingid), higher value will cause all registered tables/graphs to update
-                _QM[__$DEF.Attr_refresh] = $_newMap();  // store all tables/graphs query endpoints AND PrimaryKey fields here
+                _QM["pulse"] = $_newMap();  // store all tables/graphs query endpoints AND PrimaryKey fields here
             }
 
             register_for_pollServer(WC) {// register a new query
@@ -526,7 +523,7 @@
                     _IQMap,
                     datasrcMap;
 
-                setting = $_getAttribute(WC, __$DEF.Attr_refresh); // eg: pulse="SensorValues:_pingid"
+                setting = $_getAttribute(WC, "pulse"); // eg: pulse="SensorValues:_pingid"
                 if (setting) {
                     /**
                      * These CAN be configured as data arribute on the itpings-table tag
@@ -544,11 +541,11 @@
                      * <itpings-table query="PingedDevices">
                      *
                      * **/
-                    datasrc = WC.query || $_getAttribute(WC, __$DEF.Attr_query);
+                    datasrc = WC.query || $_getAttribute(WC, "query");
                     idfield = WC.idfield || __$DEF.ID;                 // FIRST column in itpings-table
                 }
                 if (!datasrc) console.error(__TEXT_QUERYMANAGER_CANT_REGISTER, WC);
-                _IQMap = _QM[__$DEF.Attr_refresh];
+                _IQMap = _QM["pulse"];
 
                 if (!_IQMap.has(datasrc)) _IQMap.set(datasrc, $_newMap());          // every datasrc gets its own Map (so 'can' store muliple PrimaryKeys
                 datasrcMap = _IQMap.get(datasrc);                                   // Sorry... looking back I should have simplified this
@@ -565,7 +562,7 @@
                 let newPoll = (endpoint, milliseconds = heartbeat_msecs) => window.setTimeout(() => _QM.pollServer(endpoint), milliseconds);
 
                 let poll_Registered_Elements = json => {
-                    this[__$DEF.Attr_refresh].forEach((datasrcMap, datasrc) => {
+                    this["pulse"].forEach((datasrcMap, datasrc) => {
                         //ITpings_Query_Manager._log(datasrcMap, datasrc);
                         datasrcMap.forEach((fieldSet, idfield) => {
                             //ITpings_Query_Manager._log(fieldSet, idfield);
@@ -595,7 +592,7 @@
                         //idfield = $_Object_keys(setting)[0];
                         [idfield] = $_Object_keys(setting);         // ES6 Destructuring
                         idvalue = setting[idfield];
-                        datasrcMap = _QM[__$DEF.Attr_refresh].get(datasrc);
+                        datasrcMap = _QM["pulse"].get(datasrc);
                         if (datasrcMap) {
                             ITpings_Query_Manager._log(21, datasrc, maxids[datasrc]);
                             fieldSet = datasrcMap.get(idfield);
@@ -646,10 +643,11 @@
         };
 
         let $WC_saveCachedData_To_localstorage = (WC, rowCount = 9999) => {
-            if (!WC.hasAttribute([__$DEF.Attr_nocache]) && WC.rows && WC.rows.length > 0) {
+            if (!WC.hasAttribute(["nocache"]) && WC.rows && WC.rows.length > 0) {
+                WC.rows = $_lastNelements(WC.rows, rowCount);
                 $WC_log('$WC_saveCachedData_To_localstorage: Save', WC.rows.length, "rows as key:" + WC._WebComponent_ID);
                 $_localstorage_Set(WC._WebComponent_ID, {//todo catch error when localStorage is full (save less rows)
-                    [__$DEF.ITpings_result]: WC.rows.slice(0, rowCount + 1)
+                    [__$DEF.ITpings_result]: WC.rows
                 });
             }
         };
@@ -664,25 +662,25 @@
 
                     // noinspection JSUnusedGlobalSymbols
                     static get observedAttributes() {
-                        let attributes = [__$DEF.Attr_query];          // data attributes (changes) this Custom Element listens to
+                        let attributes = ["query"];          // data attributes (changes) this Custom Element listens to
                         //constructor has not run yet, so this scope is not available
                         //this._log(__TEXT_CUSTOM_ELEMENT_ATTRIBUTES, _observedAttributes);
                         return attributes;
                     }
 
                     get title() {
-                        return $_getAttribute(this, __$DEF.Attr_title);
+                        return $_getAttribute(this, "title");
                     }
 
                     set title(newValue) {
-                        $_setAttribute(this, __$DEF.Attr_title, newValue);
+                        $_setAttribute(this, "title", newValue);
                     }
 
                     // noinspection JSUnusedGlobalSymbols
                     constructor() {
                         super();
                         let WC = this;
-                        WC._WebComponent_ID = $_getAttribute(WC, __$DEF.Attr_query);
+                        WC._WebComponent_ID = $_getAttribute(WC, "query");
                         if (_traceCustomElement) this._log(__TEXT_CUSTOM_ELEMENT_CONSTRUCTOR, WC);
                         WC.maxid = 1;         // maximum pingid/devid/appid etc. this itpings-table has displayed
                         WC.rows = [];
@@ -691,7 +689,7 @@
                     setTitle(txt = emptyString) {
                         let WC = this;
                         if (!WC.idle) txt = __LoadingTitle(txt);
-                        if (txt === emptyString) txt = WC[__$DEF.Attr_title] || WC[__$DEF.Attr_query];
+                        if (txt === emptyString) txt = WC["title"] || WC["query"];
                         $_innerHTML(WC.CAPTION, txt);
                     }
 
@@ -808,10 +806,10 @@
                                             if (localStorage_cachedData === false && WC.hasCachedData) this._log('add ', rows.length, 'new rows from Database', rows && rows[0]);
 
                                             let headers, first_column_name, dataNewRows;
-                                            this.setTitle(WC[__$DEF.Attr_title] + "; processing data");
+                                            this.setTitle(WC["title"] + "; processing data");
 
                                             if (!WC.idfield && rows.length === 0) {
-                                                $_innerHTML(WC, `<div class='nodata'>No data: ${$_getAttribute(WC, __$DEF.Attr_query)}</div>`);
+                                                $_innerHTML(WC, `<div class='nodata'>No data: ${$_getAttribute(WC, "query")}</div>`);
                                                 WC.idle = true;                                        // processed all rows
                                             } else {
                                                 if (!WC.idfield) {                                      // first draw of TABLE
@@ -851,7 +849,7 @@
                                                 }
                                                 $WC_saveCachedData_To_localstorage(WC, __cacheRowCount);
                                                 WC.idle = true;                                        // processed all rows
-                                                this.setTitle(WC[__$DEF.Attr_title] || WC[__$DEF.Attr_query]);
+                                                this.setTitle(WC["title"] || WC["query"]);
                                             }
 
 
@@ -880,7 +878,6 @@
 
                                     if (__isCachedJSON(json)) {
                                         this._log("Cached end", WC.maxid);
-                                        //this.pollServer(WC.maxid + 1000);
                                         WC.hasCachedData = false;
                                     }
 
@@ -908,7 +905,7 @@
                         // ** So also at first creation in the DOM
                         let WC = this;
                         let isConnected = WC.isConnected;                                     // sparsely documented standard property
-                        if (attr === __$DEF.Attr_query) {
+                        if (attr === "query") {
                             if (!__useLIVE_Data_display_WebComponent) return void($_innerHTML(WC, newValue));
 
                             WC.uri = __localPath(newValue);
@@ -936,7 +933,7 @@
                             WC.CAPTION = $_appendChild(WC.HEADER, $_createElement("CAPTION"));                    // CAPTION tag inside TABLE
                             $_classList_add(WC.CAPTION, "itpings-div-title");                                     // sticky position
 
-                            let title = WC[__$DEF.Attr_title] || WC[__$DEF.Attr_query];
+                            let title = WC["title"] || WC["query"];
                             $_innerHTML(WC.CAPTION, title);
                             $_innerHTML(WC, __LoadingTitle(title));
 
@@ -951,7 +948,7 @@
                              * There is no data in the <TABLE> yet, data arrives in the async fetch Data call
                              * So the Custom Element HTML above will be injected into the DOM in that fetch Data call **/
 
-                            let cachedDataKey = WC.hasAttribute([__$DEF.Attr_nocache]) ? false : WC._WebComponent_ID;
+                            let cachedDataKey = WC.hasAttribute(["nocache"]) ? false : WC._WebComponent_ID;
                             this.fetchTableData(emptyString, cachedDataKey);  // call ONCE with an empty filter value
                         }
                     }
@@ -1004,18 +1001,18 @@
 //region ========================================================== Custom Element Getters/Setters
                     // noinspection JSUnusedGlobalSymbols
                     static get observedAttributes() {
-                        let _observedAttributes = [__$DEF.sensor, __$DEF.Attr_interval];
+                        let _observedAttributes = [__$DEF.sensor, "interval"];
                         //constructor has not run yet, so this scope is not available
                         //this._log(__TEXT_CUSTOM_ELEMENT_ATTRIBUTES, _observedAttributes);
                         return _observedAttributes;
                     }
 
                     get title() {
-                        return $_getAttribute(this, __$DEF.Attr_title);
+                        return $_getAttribute(this, "title");
                     }
 
                     set title(newValue) {
-                        $_setAttribute(this, __$DEF.Attr_title, newValue);
+                        $_setAttribute(this, "title", newValue);
                     }
 
                     get sensor() {
@@ -1027,21 +1024,22 @@
                     }
 
                     get interval() {
-                        return $_getAttribute(this, __$DEF.Attr_interval);
+                        return $_getAttribute(this, "interval");
                     }
 
                     set interval(newValue) {
-                        $_setAttribute(this, __$DEF.Attr_interval, newValue);
-                        this._log(this.isConnected ? 'Connected' : 'Not Connected', "(setter) ►►►", __$DEF.Attr_interval, ": (" + typeof newValue + ")", newValue);
-                        let isMouseClick = event && event.type === 'click';
                         let WC = this;
-                        let intervalDIV = WC.INTERVALS.querySelector(`[id="${newValue}"]`);
+                        $_setAttribute(WC, "interval", newValue);
+                        this._log("(setter)", "interval=", "(" + (typeof newValue) + ")", newValue);
+                        WC.isMouseClick = event && event.type === 'click';
                         let sensor = WC.sensor;
                         let intervalDefinition = WC.__INTERVAL = __INTERVALS.has(WC.interval) ? __INTERVALS.get(WC.interval) : __INTERVAL_DEFAULT;
 
                         WC.idle = false;    // now busy getting data to be graphed
 
-                        $_toggleClasses([...this.INTERVALS.children], intervalDIV, "selectedInterval"); //loop all interval DIVs , add or remove Class: selectedInterval
+                        $_toggleClasses([...this.INTERVALS.children]
+                            , WC.INTERVALS.querySelector(`[id="${newValue}"]`)
+                            , "selectedInterval"); //loop all interval DIVs , add or remove Class: selectedInterval
 
                         //todo use faster SensorValues_Update query   let sensor_ids = (sensor === "temperature_5") ? "7,14" : "6,13";
                         if (ITPings_graphable_PingedDevices_Values.includes(sensor)) {
@@ -1130,11 +1128,12 @@
 
                     drawChartJS(rows = false) {
                         let WC = this;
-                        (rows || WC.rows).forEach(row => {
-                            let ChartJS_datasets = WC.ChartJS["data"]["datasets"];
-                            let ChartJS_labels = WC.ChartJS["data"]["labels"];
+                        rows = rows || WC.rows;
+                        WC._log('has', WC.rows.length, 'rows. Draw ', rows.length, 'new rows with ChartJS');
+                        let ChartJS_datasets = WC.ChartJS["data"]["datasets"];
+                        let ChartJS_labels = WC.ChartJS["data"]["labels"];
+                        rows.forEach((row, index) => {
                             let x_time = $_dateStr(row[__$DEF.created], WC.__INTERVAL.xformat);         // format x-axis label with timestamp
-
                             if (!ChartJS_labels.includes(x_time)) {                                     // prevent duplicate timelables on x-axis
                                 let lineID = row[WC.deviceid_field_name];                               // one graphed line per device
                                 let dataset_idx = WC.ChartJS_Lines.indexOf(lineID);                     // find existing device
@@ -1152,11 +1151,15 @@
                                     });
                                     WC.ChartJS_Lines.push(lineID);                                      // unique sensorid per device
                                 }
-                                ChartJS_labels.push(x_time);
-                                ChartJS_datasets[dataset_idx]["data"].push({
-                                    "x": x_time,
-                                    "y": row[WC.value_field_name]
-                                });
+                                let use_datapoint = index === 0 || $_lastNelements(x_time, 1) === "0";
+                                use_datapoint = true;
+                                if (use_datapoint) {
+                                    ChartJS_labels.push(x_time);
+                                    ChartJS_datasets[dataset_idx]["data"].push({
+                                        "x": x_time,
+                                        "y": row[WC.value_field_name]
+                                    });
+                                }
                             }
                         });
                         WC.ChartJS.update();
@@ -1172,14 +1175,17 @@
                     fetchChartData(filter = emptyString, localStorage_cachedData = false) {
                         let WC = this;
                         WC.idle = false;
-                        this.setTitle(__TEXT_RETREIVING_DB_VALUES);
-                        $_style_display(WC.INTERVALS);// style.display='none';
+                        if (this.isMouseClick || WC.rows.length === 0) {                            // only when manual Interval selection OR first init
+                            this.setTitle(__TEXT_RETREIVING_DB_VALUES);                             // set title to busy indicator
+                            $_style_display(WC.INTERVALS);// style.display='none';                  // hide Intervals
+                        }
                         $_fetch(WC.uri + filter, localStorage_cachedData)
                             .then(json => {
                                 let rows = __getResultArray(json);
                                 try {
                                     let _lastID = array => ($_last(array)[WC.idfield]);             // get (highest) id field (from last row)
-                                    this._log(" has", WC.rows.length, "rows, now got", rows.length, WC.hasCachedData ? 'Cached!' : 'New', "rows", filter ? "from filter:" + filter : "");
+                                    let interval = WC.__INTERVAL;
+                                    this._log(" has", WC.rows.length, "rows (max:" + interval.maxrows + "), now got", rows.length, WC.hasCachedData ? 'Cached!' : 'New', "rows", filter ? "from filter:" + filter : "");
                                     if (WC.hasCachedData && _lastID(rows) === _lastID(WC.rows)) {   // do not redraw chart, cached data is the same
                                         this._log("new data is same as cached data!");
                                         WC.hasCachedData = false;
@@ -1187,32 +1193,42 @@
                                         this.setTitle();
                                     } else {
                                         this.setTitle("; processing data");
-                                        if (WC.rows.length === 0) {
+                                        if (WC.rows.length === 0) {                                 // first init
                                             __QueryManager.register_for_pollServer(WC);
                                             this.initChartJS();
                                         }
+                                        if (WC.hasCachedData) WC.resetCache = true;                 // order: display cached data > get newest data > clear Chart > redisplay new data
+
                                         WC.hasCachedData = __isCachedJSON(json);
 
-                                        if (rows[0] !== null) { // fixme: Why is the result from the DB [null] sometimes?
-                                            rows.map(row => {
-                                                WC[__$DEF.ID] = row[__$DEF.ID];                                    // keep track of hightest Primary Key value
+                                        if (rows[0] === null) {
+                                            console.error("WTF! Why did we get no rows from the database?");
+                                            __setHeartbeat(__heartbeat_blurred);                    // give developer time to analyze console
+                                        } else {
+                                            if (WC.isMouseClick || WC.resetCache) {                 // re-init with Interval data read from Database
+                                                this.initChartJS();
+                                                WC.rows = [];
+                                            }
+                                            rows.map(row => {                                       // process (new) rows
+                                                WC[__$DEF.ID] = row[__$DEF.ID];                     // keep track of hightest Primary Key value (presuming always getting a higher pingid)
                                                 WC.rows.push(row);
                                             });
-                                            this.drawChartJS(WC.hasCachedData ? false : rows);
+                                            WC.rows = $_lastNelements(WC.rows, interval.maxrows);   // keep most recent rows, defined by current interval
+                                            this.drawChartJS(WC.hasCachedData ? false : rows);      // draw WC.rows or New rows
                                         }
-                                        WC.idle = true;
-                                        $_style_display(WC.INTERVALS, 'initial');
-                                        this.setTitle();
 
-                                        //WC.rows = $_ArrayFrom(rows);
-                                        if (WC.hasCachedData) {
-                                            this._log('hasCachedData', filter);
-                                            this.fetchChartData(filter, false);         // now fetch the latest data
+                                        WC.idle = true;                                             // no longer waiting for database fetch
+                                        $_style_display(WC.INTERVALS, 'initial');                   // display Intervals again
+                                        this.setTitle();                                            // reset title to query/sensor name
+
+                                        if (WC.hasCachedData) {                                     // if this data came from cache
+                                            this.resetCache = true;                                 // then clear the graph cached data
+                                            this.fetchChartData(filter, false);                     // AFTER fetching all Interval data
                                         } else {
-                                            this._log('NO hasCachedData', filter);
-                                            $WC_saveCachedData_To_localstorage(WC);
+                                            $WC_saveCachedData_To_localstorage(WC, interval.maxrows);   // if data came from DB, then cache new data
                                         }
-                                        WC.hasCachedData = false;
+                                        WC.resetCache = false;
+                                        WC.isMouseClick = false;
                                     }
                                 } catch (e) {
                                     console.error('fetchChartData', e);
@@ -1240,6 +1256,7 @@
                     constructor() {
                         super();
                         this.rows = []; // cache data
+                        this.resetCache = false;
                     }
 
                     // noinspection JSUnusedGlobalSymbols
@@ -1247,7 +1264,7 @@
                         let WC = this;
                         let isConnected = WC.isConnected;
                         switch (attr) {
-                            case(__$DEF.Attr_interval):
+                            case("interval"):
                                 if (isConnected) {
                                     if (_traceCustomElement) this._log(__TEXT_CUSTOM_ELEMENT_ATTRIBUTECHANGED, ", attr:" + attr, ", oldValue:" + oldValue, ", newValue" + newValue, isConnected ? emptyString : "►► NOT", "Connected");
 
@@ -1312,7 +1329,7 @@
                     //region ========================================================== Custom Element Getters/Setters
                     // noinspection JSUnusedGlobalSymbols
                     static get observedAttributes() {
-                        let _observedAttributes = [__$DEF.sensor, __$DEF.Attr_interval];
+                        let _observedAttributes = [__$DEF.sensor, "interval"];
                         //constructor has not run yet, so this scope is not available
                         //this._log(__TEXT_CUSTOM_ELEMENT_ATTRIBUTES, _observedAttributes);
                         return _observedAttributes;
@@ -1330,7 +1347,7 @@
                         let WC = this;
                         let isConnected = WC.isConnected;
                         switch (attr) {
-                            case(__$DEF.Attr_interval):
+                            case("interval"):
                                 if (isConnected) {
                                 }
                                 break;

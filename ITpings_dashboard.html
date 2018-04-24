@@ -153,7 +153,8 @@ Redux
         }
 
         .top_right:hover {
-            grid-area: 1/2/3/5;
+            /*spread 1 column over 3 columns on hover */
+            /*grid-area: 1/2/3/5;*/
         }
 
         .middle_left {
@@ -731,8 +732,8 @@ Redux
     <div class="top_left">
         <itpings-table query="Devices" title="All Devices" nocache></itpings-table>
     </div>
-    <!--<itpings-table class="top_center" query="SensorValues" title="SensorValues"></itpings-table>-->
-    <itpings-table class="top_center" query="PingedDevices" title="Pinged Devices"></itpings-table>
+    <itpings-table class="top_center" query="SensorValues" title="SensorValues"></itpings-table>
+    <!--<itpings-table class="top_center" query="PingedDevices" title="Pinged Devices"></itpings-table>-->
     <itpings-chart class="top_right" sensor="Temperature" title="Temperatures" interval="6H"></itpings-chart>
 
     <!--row 2-->

@@ -68,6 +68,9 @@ function check_Button_Event_Trigger_For_Sensor($sensor_name, $sensor_value)
 
         //$msg = "Button $dev_id was clicked, at $date";
         //sendEmail("someone@world.com", $msg, $msg);
+
+        call_IFTTT_Webhook('ttn_button_clicked', 'cwmYqAicGxSfDWLOO6MZSa', "Button $dev_id was clicked, at $date");
+
         insert_TTN_Event(ENUM_EVENTTYPE_Trigger, 'ButtonClicked', $dev_id);
     }
 }
@@ -117,9 +120,8 @@ function process_SensorValue($sensor_ID, $sensor_name, $sensor_value)
 
 //endregion == CUSTOMIZABLE SENSOR TRIGGERS =======================================================
 
-function call_IFTTT_Webhook($event,$key,$value1='',$value2='',$value3='')
+function call_IFTTT_Webhook($event, $key, $value1 = '', $value2 = '', $value3 = '')
 {
-    call_IFTTT_Webhook('ttn_button_clicked','cwmYqAicGxSfDWLOO6MZSa');
     $endpoint = 'https://maker.ifttt.com/trigger/$event/with/key/$key';
 
     $some_data = array(                                     // Here is the data we will be sending to the service

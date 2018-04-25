@@ -732,19 +732,19 @@ Redux
     <div class="top_left">
         <itpings-table query="Devices" title="All Devices" nocache></itpings-table>
     </div>
-    <itpings-table class="top_center" query="SensorValues" title="SensorValues"></itpings-table>
+    <!--<itpings-table class="top_center" query="SensorValues" title="SensorValues"></itpings-table>-->
     <!--<itpings-table class="top_center" query="PingedDevices" title="Pinged Devices"></itpings-table>-->
     <itpings-chart class="top_right" sensor="Temperature" title="Temperatures" interval="6H"></itpings-chart>
 
     <!--row 2-->
-    <itpings-table class="middle_center" query="PingedGateways" title="Pinged Gateways"></itpings-table>
-    <itpings-chart class="middle_right" sensor="luminosity_6,light" title="Light" interval="6H"></itpings-chart>
+    <!--<itpings-table class="middle_center" query="PingedGateways" title="Pinged Gateways"></itpings-table>-->
+    <!--<itpings-chart class="middle_right" sensor="luminosity_6,light" title="Light" interval="6H"></itpings-chart>-->
 
     <!--row 3-->
-    <itpings-table class="bottom_left" query="Events" title="ITpings Events" nocache></itpings-table>
-    <itpings-chart class="bottom_center_right" sensor="analog_in_4,battery" title="Battery"
-    interval="6H"></itpings-chart>
-    <itpings-chart class="bottom_right" sensor="rssi" title="RSSI" interval="6H"></itpings-chart>
+    <!--<itpings-table class="bottom_left" query="Events" title="ITpings Events" nocache></itpings-table>-->
+    <!--<itpings-chart class="bottom_center_right" sensor="analog_in_4,battery" title="Battery"-->
+    <!--interval="6H"></itpings-chart>-->
+    <!--<itpings-chart class="bottom_right" sensor="rssi" title="RSSI" interval="6H"></itpings-chart>-->
 
     <style id="JSONviewer">
         itpings-json {
@@ -811,7 +811,7 @@ Redux
         <h1>Database</h1>
         <!--<itpings-table query="DBInfo" title="ITpings Database Info" fullheight></itpings-table>-->
         <script>
-            console.log('executed article_database script');
+            console.log('executed INline article_database script');
             let key = 'YOUR_PRIVATE_KEY';// but you better not use this on a public website!
             let __addClick = (selector, action) => {
                 let element = document.querySelector(selector);

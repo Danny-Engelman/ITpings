@@ -1,3 +1,9 @@
 .idea/
 ITpings_access_database*.php
 ITpings_dashboard.min.js
+gateways.json
+package-lock.json
+router.html
+svg.html
+testfile.json
+uglify*.json

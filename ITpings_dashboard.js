@@ -6,13 +6,13 @@
 //todo: debug double gateways - activated event trace
 //todo: plot coordinates
 //todo: fixed alt in PingedGateways
-//todo: detect foreign traffic
 //todo: link Gateway to TTNmapper: https://ttnmapper.org/colour-radar/?gateway=ttn_365csi_nl&type=radar
 //todo: monitor when last ping was received (dashboard reports TTN server offline status)
 //todo: preload other graph intervals (download largest then proces in WebWorker)
 
 //todo audio sounds for (new) events
 //todo: (low) remove cached data when deleted from DB
+//todo: (low) detect foreign traffic (wait for TTN V3)
 
 //unoffical TTN endpoints
 //https://www.thethingsnetwork.org/gateway-data/location?latitude=52.316&longitude=4.66040850&distance=2000

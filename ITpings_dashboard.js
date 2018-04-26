@@ -125,7 +125,10 @@
      * **/
     let ITPings_graphable_PingedDevices_Values = "frequency,snr,rssi,channel".split`,`;
 
-    let __synchronized_pingID_scrolling_over_multiple_displayed_tables = true;
+    /**
+     * With multiple tables displayed, auto scroll all tables to the same _pingid
+     * **/
+    let __synchronized_pingID_table_scrolling = true;
 
     let __TEXT_QUERYMANAGER_CANT_REGISTER = " QueryManager can't register";
     let __TEXT_REGISTER_FOR_DOPULSE = "register WC for pollServer event";
@@ -350,12 +353,14 @@
 
 //region ========================================================== $_datetime functions, no need for Moment or Date-Fns
 
+    // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toLocaleDateString
     let $_isDate = x => Object.prototype.toString.call(x) === '[object Date]';
     let $_dateLocale = navigator.language;                                          // get browser language
     let $_dateFormat_Hmm = "H:mm";
     let $_dateFormat_DMMM = "D MMM";
     let $_dateFormat_DMMMHmm = "D MMM H:mm";
-    let $_dateDateDefault = {month: 'short', day: 'numeric'};                       // native JS .toLocaleDateString options
+    let $_date_Default_ShortDate = {month: 'short', day: 'numeric'};                       // native JS .toLocaleDateString options
+    let $_date_Default_LongDate = {month: 'long', day: 'numeric', year: 'numeric'};                       // native JS .toLocaleDateString options
     let $_dateTimeDefault = {hour: '2-digit', minute: '2-digit', hour12: false};
 
     let $_dateEnsureDate = (date = '') => $_isString(date) ? new Date(date) : date;
@@ -372,11 +377,13 @@
         let localeDate = options => date.toLocaleDateString(locale, options);       // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toLocaleDateString
         let padded = date => ("0" + date).slice(-2);                                // pad 9 minutes to 09 minutes
         if (format === $_dateFormat_DMMM) {
-            return localeDate($_dateDateDefault);
+            return localeDate($_date_Default_ShortDate);
         } else if (format === $_dateFormat_Hmm) {
             return padded(date.getHours()) + ":" + padded(date.getMinutes());
         } else if (format === $_dateFormat_DMMMHmm) {
             return $_dateStr(date, $_dateFormat_DMMM) + " " + $_dateTimeStr(date);
+        } else {
+            return localeDate(format) + " " + $_dateTimeStr(date);
         }
     }
 
@@ -488,7 +495,7 @@
             interval = window.setInterval(() => {
                 //$_log("Heartbeat:", "orange;color:black", heartbeat_msecs);
                 document.getElementById('heartbeat_heart').classList.toggle('heartbeating');
-                $_innerHTML($_getElementById('heartbeat_time'), $_dateStr(new Date()));
+                $_innerHTML($_getElementById('heartbeat_time'), $_dateStr(new Date(), $_date_Default_LongDate));
                 $_QueryManager.pollServer(__DB_PingID_endpoint);
             }, heartbeat_msecs);
         } else {
@@ -781,38 +788,33 @@
 
                             // ** Only execute once PER Row/Table
                             // ** mouseover a pingid and all other tables scroll to the same pingid
-                            if (name === $_DEF.ID && __synchronized_pingID_scrolling_over_multiple_displayed_tables) {
+                            if (name === $_DEF.ID && __synchronized_pingID_table_scrolling) {
                                 $_setAttribute(WC.TBODY, "data-" + name, value);
                                 TR.addEventListener("mouseenter", () => {
-                                    let _pingid = $_getAttribute(TR, "data-_pingid");                          // get pingid for this row
-                                    let selector = "itpings-table .data-table TR[data-_pingid='" + _pingid + "']";   // find TBODY with this pingid
-                                    let TRs = $_querySelectorAll(selector);
-                                    TR.backtotop = false;
-                                    if (TRs) {
-                                        this._log("mouseenter", _pingid, TRs, TRs.length);
-                                        TRs.map(TRwithPingID => {
-                                            if (TRwithPingID !== TR) {
-                                                TRwithPingID.scrollIntoView({
-                                                    "block": "center", "inline": "nearest"
-                                                });
-                                                //TR.parentNode.parentNode.style.paddingTop = "2em";
-                                            }
-                                            $_setBackgroundColor(TRwithPingID, "chartreuse");
-                                        });
-                                    }
-                                    if (!TR.hasMouseLeaveListener) {
-                                        TR.addEventListener("mouseleave", () => {
-                                            TRs.map(TRwithPingID => {
-                                                if (TRwithPingID !== TR) {
-                                                    //TRwithPingID.scrollIntoView();
-                                                    //TR.parentNode.parentNode.style.paddingTop = "initial";
-                                                }
-                                                $_setBackgroundColor(TRwithPingID, "initial");
+                                    let dataname = "data-" + $_DEF.ID;                      // _pingid
+                                    let _pingid = $_getAttribute(TR, dataname);
+                                    let saved_backgroundColor = TR.style.backgroundColor;
+                                    let selector = "itpings-table .data-table TR[" + dataname + "='" + _pingid + "']";
+                                    let TRs = $_querySelectorAll(selector);                 // get all TRs with the same _pingid defined
+                                    let hasMatchingTRs = TRs.length > 1;
+                                    let TRcolor = hasMatchingTRs ? "chartreuse" : "lightcoral";
+                                    if (TRs) TRs.map(otherTR => {                      // scroll all Other TRs in Tables to the same _pingid
+                                        if (otherTR !== TR) {                          // for all other TRs: scroll TR into view
+                                            otherTR.savedScrollTop = otherTR.parentNode.parentNode.parentNode.scrollTop;
+                                            otherTR.scrollIntoView({"block": "center", "inline": "nearest"});
+                                        }
+                                        $_setBackgroundColor(otherTR, TRcolor);   // highlight all matching _pingids
+                                    });
+                                    if (!TR.hasMouseLeaveListener) {                        // no eventlistner defined yet
+                                        TR.addEventListener("mouseleave", () =>
+                                            TRs.map(otherTR => {
+                                                $_setBackgroundColor(otherTR, saved_backgroundColor);
                                                 window.setTimeout(() => {
-                                                    //                       TRwithPingID.parentNode.parentNode.parentNode.scrollTo(0, 0);
-                                                }, 200);
-                                            });
-                                        });
+                                                    let parentDIV = otherTR.parentNode.parentNode.parentNode;
+                                                    let savedScrollTop = hasMatchingTRs ? otherTR.savedScrollTop : 0;
+                                                    parentDIV.scrollTop = savedScrollTop;
+                                                }, 200)
+                                            }));
                                         TR.hasMouseLeaveListener = true;
                                     }
                                 });
@@ -839,10 +841,11 @@
                                     if (localStorage_cachedData === false && WC.hasCachedData) this._log('add ', rows.length, 'new rows from Database', rows && rows[0]);
 
                                     let headers, first_column_name, dataNewRows;
+                                    let query = $_getAttribute(WC, "query");
                                     this.setTitle(WC["title"] + "; processing data");
 
                                     if (!WC.idfield && rows.length === 0) {
-                                        $_innerHTML(WC, `<div class='nodata'>No data: ${$_getAttribute(WC, "query")}</div>`);
+                                        $_innerHTML(WC, `<div class='nodata'>No data: ${query}</div>`);
                                         WC.idle = true;                                        // processed all rows
                                     } else {
                                         if (!WC.idfield) {                                      // first draw of TABLE
@@ -877,6 +880,11 @@
                                             this._log(WC.query, dataNewRows.length, 'rows added to table');
 
                                             addCacheRows(rows);
+
+                                            /** remove older TBODYs from DOM **/
+                                            let TBODYs = document.querySelectorAll("[query='${query}'] TBODY");
+                                            let TBODYsCount = TBODYs.length;
+                                            if (TBODYsCount > 120) WC.TABLE.removeChild(TBODYs[TBODYsCount - 1]); // 2 hours if Device pings every 30 seconds
                                         } else {
                                             console.warn("empty result set from:", WC.uri);
                                         }
@@ -947,9 +955,10 @@
 
                     /**
                      * Create HTML structure:
+                     *
                      *  DIV .table-wrapper
-                     *      CAPTION (title)
-                     *      TABLE .sticky-header
+                     *      CAPTION .itpings-div-title
+                     *      TABLE .sticky-header (always floating header row)
                      *          THEAD
                      *      TABLE
                      *          TBODY (newest) (injected by fetchChartData)
@@ -995,6 +1004,8 @@
     (function (elementName = $_custom_element_Namespace + "chart") {
         let _traceCustomElement = true; // for educational purposes, trace specific CustomElement operations to the console
 
+
+        let __INTERVAL_DEFAULT = "6H";
         let __INTERVALS = $_newMap();
         // ES6 Destructuring, parameter names become keys: {interval:interval, unit:unit, xformat:xformat}
         let addInterval = (key, interval, maxrows, unit, xformat) => __INTERVALS.set(key, {
@@ -1003,6 +1014,7 @@
             unit,
             xformat
         });
+        /** seperate calls; easier to disable than an Array structure **/
         addInterval("5m", 5, 20, $_DEF.MINUTE, $_dateFormat_Hmm);
         addInterval("30m", 30, 60, $_DEF.MINUTE, $_dateFormat_Hmm);
         addInterval("1H", 1, 120, $_DEF.HOUR, $_dateFormat_Hmm);
@@ -1016,7 +1028,6 @@
         addInterval("6M", 6, 1000, $_DEF.MONTH, $_dateFormat_DMMM);
 //            addInterval("1Y", 1, $_DEF.YEAR, $_dateFormat_DMMM);
 
-        let __INTERVAL_DEFAULT = "6H";
 
         window.customElements.define(elementName, class extends HTMLElement {
             _log() {
@@ -1052,13 +1063,17 @@
                 return $_getAttribute(this, "interval");
             }
 
+            /**
+             * Main Setter
+             * this.interval=6H
+             * **/
             set interval(newValue) {
                 let WC = this;
                 $_setAttribute(WC, "interval", newValue);
                 this._log("(setter)", "interval=", "(" + (typeof newValue) + ")", newValue);
                 WC.isMouseClick = event && event.type === 'click';
                 let sensor = WC.sensor;
-                let intervalDefinition = WC.__INTERVAL = __INTERVALS.has(WC.interval) ? __INTERVALS.get(WC.interval) : __INTERVAL_DEFAULT;
+                let intervalDefinition = WC.current_interval = __INTERVALS.has(newValue) ? __INTERVALS.get(newValue) : __INTERVAL_DEFAULT;
 
                 WC.idle = false;    // now busy getting data to be graphed
 
@@ -1131,6 +1146,15 @@
                             }
 
                         },
+                        scales: {
+                            xAxes: [{
+                                // type: 'time',    // requires MomentJS !!
+                                ticks: {
+                                    autoSkip: true,
+                                    maxTicksLimit: 10
+                                },
+                            }]
+                        }
                         // scales: {
                         //     xAxes: [{
                         //         display: false,
@@ -1158,7 +1182,7 @@
                 let ChartJS_datasets = WC.ChartJS["data"]["datasets"];
                 let ChartJS_labels = WC.ChartJS["data"]["labels"];
                 rows.forEach((row, index) => {
-                    let x_time = $_dateStr(row[$_DEF.created], WC.__INTERVAL.xformat);         // format x-axis label with timestamp
+                    let x_time = $_dateStr(row[$_DEF.created], WC.current_interval.xformat);         // format x-axis label with timestamp
                     if (!ChartJS_labels.includes(x_time)) {                                     // prevent duplicate timelables on x-axis
                         let lineID = row[WC.deviceid_field_name];                               // one graphed line per device
                         let dataset_idx = WC.ChartJS_Lines.indexOf(lineID);                     // find existing device
@@ -1193,8 +1217,13 @@
             setTitle(txt = emptyString) {
                 let WC = this;
                 txt = (WC.title || WC.query) + txt;
-                if (!WC.idle) txt = __LoadingTitle(txt);
+                if (WC.idle) txt += "";//<span class=refreshChart> &#x21bb; </span>";// needs global clickhandler or other DOM layout for fixed eventhandler
+                else txt = __LoadingTitle(txt);
                 $_innerHTML(WC.CAPTION, txt);
+            }
+
+            showIntervals(show = false) {
+                $_style_display(this.INTERVALS, show ? 'initial' : 'none');                 // display/none Intervals DIV
             }
 
             fetchChartData(filter = emptyString, localStorage_cachedData = false) {
@@ -1202,20 +1231,21 @@
                 WC.idle = false;
                 if (this.isMouseClick || WC.rows.length === 0) {                            // only when manual Interval selection OR first init
                     this.setTitle(__TEXT_RETREIVING_DB_VALUES);                             // set title to busy indicator
-                    $_style_display(WC.INTERVALS);// style.display='none';                  // hide Intervals
+                    this.showIntervals(false);
                 }
                 $_fetch(WC.uri + filter, localStorage_cachedData)
                     .then(json => {
                         let rows = __getResultArray(json);
                         try {
                             let _lastID = array => ($_last(array)[WC.idfield]);             // get (highest) id field (from last row)
-                            let interval = WC.__INTERVAL;
+                            let interval = WC.current_interval;
                             this._log(" has", WC.rows.length, "rows (max:" + interval.maxrows + "), now got", rows.length, WC.hasCachedData ? 'Cached!' : 'New', "rows", filter ? "from filter:" + filter : "");
                             if (WC.hasCachedData && _lastID(rows) === _lastID(WC.rows)) {   // do not redraw chart, cached data is the same
                                 this._log("new data is same as cached data!");
                                 WC.hasCachedData = false;
                                 WC.idle = true;
                                 this.setTitle();
+                                this.showIntervals(true);
                             } else {
                                 this.setTitle("; processing data");
                                 if (WC.rows.length === 0) {                                 // first init
@@ -1242,14 +1272,15 @@
                                     this.drawChartJS(WC.hasCachedData ? false : rows);      // draw WC.rows or New rows
                                 }
 
-                                WC.idle = true;                                             // no longer waiting for database fetch
-                                $_style_display(WC.INTERVALS, 'initial');                   // display Intervals again
                                 this.setTitle();                                            // reset title to query/sensor name
+                                WC.idle = true;                                             // no longer waiting for database fetch
+                                this.showIntervals(true);
 
                                 if (WC.hasCachedData) {                                     // if this data came from cache
                                     this.resetCache = true;                                 // then clear the graph cached data
                                     this.fetchChartData(filter, false);                     // AFTER fetching all Interval data
                                 } else {
+                                    this.setTitle();                                            // reset title to query/sensor name
                                     $WC_saveCachedData_To_localstorage(WC, interval.maxrows);   // if data came from DB, then cache new data
                                 }
                                 WC.resetCache = false;
@@ -1304,14 +1335,24 @@
 
             // noinspection JSUnusedGlobalSymbols
             connectedCallback() {
+                this._log(__TEXT_CUSTOM_ELEMENT_CONNECTED);
+
                 let WC = this;
                 let sensor = WC.sensor;
 
                 WC.localStorageKey = sensor + "_interval";
-                this._log(__TEXT_CUSTOM_ELEMENT_CONNECTED);
 
                 let ITPINGS_DIV = $_createDIV_withClass("<!-- DIV created in connectedCallback -->", "chart-wrapper");
                 let _append = childNode => $_appendChild(ITPINGS_DIV, childNode);
+
+                /** now built DOM structure:
+                 *
+                 * <DIV .chart-wrapper>
+                 *     <DIV .chartjs-size-monitor (inserted by ChartJS)
+                 *     <DIV .itpings-div-title
+                 *     <DIV .chart_interval
+                 *     <CANVAS
+                 * **/
 
                 WC.CAPTION = _append($_createDIV_withClass(sensor, "itpings-div-title"));
 
@@ -1325,7 +1366,9 @@
                 /** append CANVAS to ITPINGS_DIV **/
                 WC.CANVAS = _append($_createElement("CANVAS"));
 
+
                 $_appendChild(WC, ITPINGS_DIV);                                             // now _append that sucker to the DOM
+
 
                 WC.interval = $_localstorage_Get(WC.localStorageKey, __INTERVAL_DEFAULT);   // force interval setter so the chart is redrawn
             }

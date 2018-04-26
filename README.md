@@ -102,6 +102,18 @@ So (for now) runs in Chrome only (other Browsers do not support new W3C standard
 
 ![](https://i.imgur.com/GjLOl5T.jpg)
 
+## Working with JSON data
+
+**Note:** Use Chrome, and install a decent **[JSON Viewer](https://chrome.google.com/webstore/detail/json-viewer/gbmdgpbipfallnflgajpaliibnhdgobh)** extension
+
+ITpings uses a custom API at ``/ITpings_connector.php?query=[TABLE/VIEW NAME]``
+
+Returning JSON data:
+
+![](https://i.imgur.com/QIiTZzw.jpg)
+
+
+
 ## Tracing the HTML5 Dashboard
 
 Open the F12 Dev Console to see what the Dashboard does:
@@ -174,25 +186,6 @@ The Client contacts the Server every second to check if there are new (higher) I
 This "Short Polling" is much easier to implement than WebSockets (which is better for multiple Clients,  
 but for this application it is only you and your Dashboard)
 
-## Working with JSON data
-
-**Note:** Use Chrome, and install a decent **[JSON Viewer](https://chrome.google.com/webstore/detail/json-viewer/gbmdgpbipfallnflgajpaliibnhdgobh)** extension
-
-ITpings uses a custom API at ``/ITpings_connector.php?query=[TABLE/VIEW NAME]``
-
-Returning JSON data:
-
-![](https://i.imgur.com/QIiTZzw.jpg)
-
-### Paramaterized Queries
-
-To prevent SQL Injection the Database must not accept bare SQL requests.
-
-> **Note**: ITpings is a basic API and very.. very.. strict when processing Query String parameters.
-
-> If ITpings can't execute your (complex) query  
-> you can dive into the ``ITpings_connector.PHP`` source-code at function: ``process_Query_with_QueryString_Parameters``
-
 ### Query URI Examples
 
 **filter** lt, le, eq, ge, gt
@@ -205,6 +198,16 @@ SQL: ``SELECT * FROM SensorValues WHERE sensorname='luminosity_6' AND sensorvalu
 
 * URI: ``/ITpings_connector.php?query=SensorValues&_sensorid=6,7``  
 SQL: ``SELECT * FROM SensorValues WHERE _sensorid IN(6,7)``
+
+### Paramaterized Queries
+
+To prevent SQL Injection the Database must not accept bare SQL requests.
+
+> **Note**: ITpings is a basic API and very.. very.. strict when processing Query String parameters.
+
+> If ITpings can't execute your (complex) query  
+> you can dive into the ``ITpings_connector.PHP`` source-code at function: ``process_Query_with_QueryString_Parameters``
+
 
 ## Display Tables and Graphs using HTML Custom Elements
 
@@ -297,4 +300,7 @@ add ES6 CustomElements to ``../tools/domprops.json`` file:
 ``
 
 ### Adding Triggers to ITpings_sensor_triggers.php
+
+Process your own sensor_name and sensor_value here
+
 todo: document

@@ -120,21 +120,13 @@ function process_SensorValue($sensor_ID, $sensor_name, $sensor_value)
 
 //endregion == CUSTOMIZABLE SENSOR TRIGGERS =======================================================
 
-function call_IFTTT_Webhook($event, $key, $value1 = '', $value2 = '', $value3 = '')
+function call_endpoint($endpoint, $data)
 {
-    $endpoint = 'https://maker.ifttt.com/trigger/$event/with/key/$key';
-
-    $some_data = array(                                     // Here is the data we will be sending to the service
-        'value1' => $value1,
-        'value2' => $value2,
-        'value3' => $value3,
-    );
-
     $curl = curl_init();                                           // $curl = curl_init('http://localhost/echoservice');
     curl_setopt($curl, CURLOPT_POST, 1);             // We POST the data
     curl_setopt($curl, CURLOPT_URL, $endpoint);             // Set the url path we want to call
     curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);// Make it so the data coming back is put into a string
-    curl_setopt($curl, CURLOPT_POSTFIELDS, $some_data); // Insert the data
+    curl_setopt($curl, CURLOPT_POSTFIELDS, $data); // Insert the data
     $result = curl_exec($curl);                                     // Send the request
 
     $info = curl_getinfo($curl);                                // Get some cURL session information back
@@ -143,5 +135,18 @@ function call_IFTTT_Webhook($event, $key, $value1 = '', $value2 = '', $value3 = 
 
     curl_close($curl);  // Free up the resources $curl is using
 
-    echo $result;
+    return $result;
+}
+
+function call_IFTTT_Webhook($event, $key, $value1 = '', $value2 = '', $value3 = '')
+{
+    $endpoint = 'https://maker.ifttt.com/trigger/$event/with/key/$key';
+
+    $data = array(                                     // Here is the data we will be sending to the service
+        'value1' => $value1,
+        'value2' => $value2,
+        'value3' => $value3,
+    );
+
+    echo call_endpoint($endpoint, $data);
 }

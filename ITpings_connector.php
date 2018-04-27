@@ -278,7 +278,7 @@ function SQL_CREATE_or_REPLACE_VIEW($view_name, $sql)
 {
     global $MySQL_DB_Connection;
 
-    //insert_TTN_Event(ENUM_EVENTTYPE_NewView, $view_name, $sql);
+    insert_TTN_Event(ENUM_EVENTTYPE_NewView, $view_name, $sql);
 
     $result = mysqli_query($MySQL_DB_Connection, $sql);
     if (!$result) {
@@ -1354,18 +1354,31 @@ function attach_Max_IDs_to_JSON_response()
  * Manage Database
  **/
 
+/**
+ * @param $table
+ * @param $key
+ * @param $value
+ */
 function Delete_By_Key_Value($table, $key, $value)
 {
     $sql = "DELETE FROM $table WHERE $key = $value;";
     SQL_DELETE($sql);
 }
 
+/**
+ * @param $table
+ * @param $key
+ * @param $reference_table
+ */
 function Delete_Unreferenced($table, $key, $reference_table)
 {
     $sql = "DELETE FROM $table WHERE $key NOT IN(SELECT $key FROM $reference_table);";
     SQL_DELETE($sql);
 }
 
+/**
+ *
+ */
 function Delete_Unreferenced_From_All_Tables()
 {
     Delete_Unreferenced(TABLE_SENSORS, PRIMARYKEY_Sensor, TABLE_SENSORVALUES);
@@ -1375,6 +1388,9 @@ function Delete_Unreferenced_From_All_Tables()
     Delete_Unreferenced(TABLE_DEVICES, PRIMARYKEY_Device, TABLE_APPLICATIONDEVICES);
 }
 
+/**
+ * @param $pingID
+ */
 function Delete_By_Ping_ID($pingID)
 {
     Delete_By_Key_Value(TABLE_EVENTS, PRIMARYKEY_Ping, $pingID);
@@ -1384,6 +1400,9 @@ function Delete_By_Ping_ID($pingID)
     Delete_Unreferenced(TABLE_LOCATIONS, PRIMARYKEY_ApplicationDevice, TABLE_PINGS);
 }
 
+/**
+ * @param $_appdevid
+ */
 function Delete_By_ApplicationDeviceID($_appdevid)
 {
     $sql = "SELECT " . PRIMARYKEY_Ping . " FROM " . TABLE_PINGS;
@@ -1401,14 +1420,6 @@ function Delete_By_ApplicationDeviceID($_appdevid)
     }
     Delete_Unreferenced_From_All_Tables();
 }
-
-function Delete_POST_Requests_without_Event()
-{
-    $sql = "DELETE FROM " . TABLE_POSTREQUESTS . " PR WHERE PR." . PRIMARYKEY_Ping;
-    $sql .= " IN(SELECT E." . PRIMARYKEY_Ping . " FROM " . TABLE_EVENTS . " E);";
-    SQL_DELETE($sql);
-}
-
 
 /**
  * Execute queries defined as ?query=[name] URI parameter
@@ -1517,10 +1528,6 @@ function process_Predefined_Query()
             if ($appid) Delete_By_ApplicationDeviceID($appid);
             break;
 
-        case 'DeleteProcessedPOSTrequests':
-            Delete_POST_Requests_without_Event();
-            break;
-
         // SELECT * FROM ITpings.ITpings__PingedGateways where time='0000-00-00 00:00:00';
 
     }
@@ -1575,7 +1582,6 @@ function QueryTrace($key, $value)
 function process_Query_with_QueryString_Parameters()
 {
     global $QueryStringParameters;
-    global $JSON_response;
     $sql = EMPTY_STRING;
 
     $table_name = TABLE_PREFIX . $QueryStringParameters['query'];
@@ -1590,7 +1596,6 @@ function process_Query_with_QueryString_Parameters()
             add_JSON_message_to_JSON_response('ViewUpdate: ' . $table_name);
             Create_Or_Replace_View($table_name);
             break;
-
 
 
         /**  regular View/Table names **/
@@ -1623,7 +1628,7 @@ function process_Query_with_QueryString_Parameters()
             break;
     }
 
-    post_process_Query($table_name,$sql);
+    post_process_Query($table_name, $sql);
 
 }
 
@@ -1640,7 +1645,13 @@ function post_process_Query($table_name, $sql)
     global $_QUERY_ALLOWED_INTERVALUNITS;
 
     if ($table_name) {
-        /** process all (by ITpings defined!!!) QueryString parameters , so user can not add roque SQL **/
+        /** process all (by ITpings defined!!!) QueryString parameters , so user can not add roque SQL
+         * So usage is very strict with:
+         * Query_Parameters have to be:
+         * - defined as constant
+         * - referenced in $_VALID_QUERY_PARAMETERS
+         * - process in switch below
+         **/
         $where = EMPTY_STRING;
         $order = EMPTY_STRING;
         $limit = EMPTY_STRING;
@@ -1668,10 +1679,15 @@ function post_process_Query($table_name, $sql)
                         if (!in_array($interval_unit, $_QUERY_ALLOWED_INTERVALUNITS)) {
                             $interval_unit = 'HOUR';
                         }
-                        $where .= $and . ITPINGS_CREATED_TIMESTAMP . " >= DATE_SUB(NOW(), INTERVAL " . (int)$parameter_value . " " . $interval_unit . ")";
+
+                        $where .= $and . ITPINGS_CREATED_TIMESTAMP . " >= DATE_SUB(NOW(), INTERVAL " . (int)$parameter_value . " $interval_unit)";
                         break;
 
                     case QUERY_PARAMETER_INTERVALUNIT:// processed in previous interval case
+                        break;
+
+                    case QUERY_PARAMETER_BY10MINUTES:
+                            $where .= $and .  " MINUTE(" . ITPINGS_CREATED_TIMESTAMP . ") IN (0,10,20,30,40,50) ";
                         break;
 
                     case QUERY_PARAMETER_ORDERBY:
@@ -1778,10 +1794,12 @@ if (CREATE_DATABASE_ON_FIRST_PING) {
  * Optional trace, to get trace output in Endpoint or Postman call
  * @param $txt
  */
-function trace($txt)
+function trace($txt = '')
 {
     global $request;
-    //echo "\n" . $txt . "\n" . implode(",", $request);
+    if ($request && $txt) {
+        //echo "\n" . $txt . "\n" . implode(",", $request);
+    }
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

@@ -415,6 +415,7 @@ define('QUERY_PARAMETER_LIMIT', 'limit');
 define('QUERY_PARAMETER_INTERVAL', 'interval');
 define('QUERY_PARAMETER_INTERVALUNIT', 'intervalunit');
 define('QUERY_PARAMETER_MAXROWS', 'maxrows');
+define('QUERY_PARAMETER_BY10MINUTES', 'by10minutes');// select data where created MINUTE IN 0,10,20,30,40,50
 
 define('INTERVALUNIT_SECOND', 'SECOND');
 define('INTERVALUNIT_MINUTE', 'MINUTE');
@@ -435,7 +436,8 @@ $_QUERY_ALLOWED_INTERVALUNITS = [INTERVALUNIT_SECOND
     , INTERVALUNIT_YEAR];
 
 /**
- * Only these fieldnames can be used as WebService Query URI parameters
+ * For very strict access to the database
+ * Only these strings can be used as WebService Query URI parameter
  * **/
 $_VALID_QUERY_PARAMETERS = [
     PRIMARYKEY_Application,
@@ -453,7 +455,8 @@ $_VALID_QUERY_PARAMETERS = [
     QUERY_PARAMETER_ORDERBY,
     QUERY_PARAMETER_INTERVAL,
     QUERY_PARAMETER_INTERVALUNIT,
-    QUERY_PARAMETER_LIMIT
+    QUERY_PARAMETER_LIMIT,
+    QUERY_PARAMETER_BY10MINUTES
 ];
 
 

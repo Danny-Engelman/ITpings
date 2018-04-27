@@ -4,6 +4,11 @@
  **/
 //region ===== CUSTOMIZABLE SENSOR TRIGGERS =======================================================
 
+/**
+ * @param $to
+ * @param $subject
+ * @param $message
+ */
 function sendEmail($to, $subject, $message)
 {
     mail($to, $subject, $message);
@@ -138,15 +143,21 @@ function call_endpoint($endpoint, $data)
     return $result;
 }
 
+/**
+ * @param $event
+ * @param $key
+ * @param string $value1
+ * @param string $value2
+ * @param string $value3
+ */
 function call_IFTTT_Webhook($event, $key, $value1 = '', $value2 = '', $value3 = '')
 {
-    $endpoint = 'https://maker.ifttt.com/trigger/$event/with/key/$key';
+    $endpoint = 'https://maker.ifttt.com/trigger/' . $event . '/with/key/' . $key;
 
     $data = array(                                     // Here is the data we will be sending to the service
         'value1' => $value1,
         'value2' => $value2,
         'value3' => $value3,
     );
-
-    echo call_endpoint($endpoint, $data);
+    if ($key) echo call_endpoint($endpoint, $data);
 }

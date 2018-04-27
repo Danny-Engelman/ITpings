@@ -16,7 +16,7 @@ define('DBUSERNAME', 'YOURUSERNAME');
 define('DBPASSWORD', 'YOURPASSWORD');
 
 // this key protects your webhook from being abused by others
-    define('YOUR_ITPINGS_KEY', '__ENTER_YOUR_PRIVATE_KEY_');
+define('YOUR_ITPINGS_KEY', '__ENTER_YOUR_PRIVATE_KEY_');
 
 // [optional] open the ITpings_connector.php in your WebBrowser
 // and see ITpings create the Database Schema
@@ -27,5 +27,8 @@ define('DBPASSWORD', 'YOURPASSWORD');
 // If no Tables exist yet,
 // The whole Database Schema will be created by ITpings when the connector is first executed
 
+// IFTTT - IF THIS THEN THAT Configuration
+// see the URI key at https://ifttt.com/services/maker_webhooks/settings
+define('IFTTT_KEY','');
+
 //endregion == REQUIRED CONFIGURATION =============================================================
-?>

@@ -44,19 +44,14 @@
     /**
      * See F12 console when running ITpings Dashboard
      *
-     * label - string to be included in colored background
-     * logCSS - default lightcoral color background, or custom CSS
+     * eg: $_log( "mySection.red", data )
      * **/
-    let $_log = (label, logCSS = "lightcoral", a = '', b = '', c = '', d = '', e = '', f = '', g = '', h = '') => {
-        console.log(`%c ${label} `, "background:" + logCSS, a, b, c, d, e, f, g, h);
-    };
-
-    let $_logApp = function () { // can NOT use array function, because this scope will be the window, and there are no arguments in arrow function
-        let params = Array.from(arguments);
-        let label = params.shift();
-        label = label.split`.`;
-        let css = ";color:white;" + (label[1] ? "background:" + label[1] : "background:green");
-        $_log("ITpings %c " + label[0], "lightgreen;padding:0 .5em", css, ...params);//todo: displays svg path for some route icons
+    let $_log = function () { // NO array function, then this scope will be the window, and there are no arguments in arrow function
+        let params = Array.from(arguments);                                     // get all parameters and proces first parameter as label/CSS
+        let label = params.shift().split`.`;                                    // define optional second backgroundcolor after dot (.)
+        // first %c gets second param CSS, next %c gets third param CSS, etc
+        params = ["%c ITpings %c " + label[0] + " ", "background:lightgreen;", ";color:white;background:" + (label[1] || "green"), ...params];
+        console.log(...params);
     };
 
 //endregion ======================================================= F12 Console traces with lots of colors
@@ -71,7 +66,7 @@
 
     // create extra Event listeners for debugging purposes
     //https://developer.mozilla.org/en-US/docs/Web/Events
-    ['DOMContentLoaded', 'hashchange', 'load', 'click', 'focus', 'blur'].map(evt => window.addEventListener(evt, () => $_logApp('Event: ' + evt, event ? event.target : '')));
+    ['DOMContentLoaded', 'hashchange', 'load', 'click', 'focus', 'blur'].map(evt => window.addEventListener(evt, () => $_log('Event: ' + evt, event ? event.target : '')));
 
 //region ========================================================== Application Constants / definitions
 
@@ -128,13 +123,12 @@
     /**
      * With multiple tables displayed, auto scroll all tables to the same _pingid
      * **/
-    let __synchronized_pingID_table_scrolling = true;
+    let __synchronized_pingID_table_scrolling = false;
 
     let __TEXT_QUERYMANAGER_CANT_REGISTER = " QueryManager can't register";
     let __TEXT_REGISTER_FOR_DOPULSE = "register WC for pollServer event";
     let __TEXT_RETREIVING_DB_VALUES = "; retrieving new Database values";
 
-    let __TEXT_CUSTOM_ELEMENT_ATTRIBUTES = "CustomElement observedAttributes:";
     let __TEXT_CUSTOM_ELEMENT_CONSTRUCTOR = "CustomElement constructor";
     let __TEXT_CUSTOM_ELEMENT_ATTRIBUTECHANGED = "CustomElement attributeChanged:";
     let __TEXT_CUSTOM_ELEMENT_CONNECTED = "CustomeElement connectedCallback";
@@ -143,7 +137,6 @@
 //endregion ======================================================= Application Constants / definitions
 
 //region ========================================================== learning to code without jQuery, Underscore or Lodash
-
     // Tiny, recursive autocurry
     const $_curry = (f, arr = []) => (...args) => (a => a.length === f.length ? f(...a) : $_curry(f, a))([...arr, ...args]);
     const $_compose = (...fns) => x => fns.reduceRight((v, f) => f(v), x);
@@ -216,7 +209,7 @@
         try {
             let arraycount = $_isArray(value) ? value.length : false;
             if (!$_isString(value)) value = JSON.stringify(value);
-            $_logApp("localstorageSet.orangered", "store", arraycount ? arraycount + " rows," : "", value.length, "bytes as:", key);
+            $_log("localstorageSet.orangered", "store", arraycount ? arraycount + " rows," : "", value.length, "bytes as:", key);
             return localStorage.setItem(key, value)
         } catch (e) {
             console.error(e);
@@ -305,7 +298,7 @@
      * **/
     let $_fetch = (uri, cacheKey = false) => {    // Async/Await?
         function _log() {   // ES6 arrow functions can not do ...arguments!
-            $_logApp("Fetch API.firebrick", ...arguments);
+            $_log("Fetch API.firebrick", ...arguments);
         }
 
         let shortURI = uri.replace(__localPath(''), '');                                        // truncate local path
@@ -331,20 +324,26 @@
                         if (response.ok) {
                             return response.json();
                         } else {
-                            $_log('$_fetch error ' + response.status + ' ' + response.statusText, "red;color:white", uri, response);
+                            $_log('$_fetch error ' + response.status + ' ' + response.statusText + ".red;color:white", uri, response);
                             return response;
                         }
                     })
                     .then(json => {
                         if (__hasResultArray(json)) {                                           // "result" key in json?
-                            _log("Fetched (" + shortURI + ")", json.result.length, "rows , ", JSON.stringify(json).length, 'bytes', "\n", encodedURI);
+                            if (json.result) {
+                                $_log("Fetched (" + shortURI + ").firebrick", json.result.length, "rows , ", JSON.stringify(json).length, 'bytes', "\n", encodedURI);
+                            } else {
+                                $_log("Fetch Error.red", json.sql);
+                                console.error(json.errors[0]);
+                                console.error(json.errors);
+                            }
                         } else {
                             // update UI for single ping value
                             if ($_isNumber(json)) $_getElementById('heartbeat_ping').innerHTML = __clickable_pingid(json);
                         }
                         resolve(json)
                     })
-                    .catch(error => reject($_log(error, 'red;color:yellow', shortURI)));
+                    .catch(error => reject($_log(error + '.red;color:yellow', shortURI)));
             }
         })
     };
@@ -427,7 +426,7 @@
     class StyleManager {
         // noinspection JSUnusedGlobalSymbols
         static _log() {
-            $_log("Router", ...arguments);
+            $_log("Router.seagreen", ...arguments);
         }
 
         constructor(id) { //cheeky way of omitting let declaration, saving 4 bytes in Uglify
@@ -442,20 +441,12 @@
             this.colors = $_CSV2Array("#e6194b,#0082c8,#f58231,#911eb4,#46f0f0,#f032e6,#d2f53c,#fabebe,#008080,#e6beff,#aa6e28,#fffac8,#800000,#aaffc3,#808000,#ffd8b1,#000080,#808080,#ffe119");
         }
 
-        loadColors_from_localStorage() {
-            $_localstorage_Set('StyleColors', this.deviceColor);
-        }
-
-        saveColors_to_localStorage() {
-            $_localstorage_Get('StyleColors');
-        }
-
         addDevice(device) {
             let _devid = device[$_DEF.ITpings_devid];
             let dev_id = device[$_DEF.dev_id];
             this.devicesMap.set(_devid, dev_id);
             let color = this.getColor(dev_id);
-            console.log('%c DeviceColor: ' + _devid + " = " + dev_id, 'background:' + color + ';color:white')
+            $_log('DeviceColor: ' + _devid + " = " + dev_id + '.' + color);
         }
 
         getColor(dev_id) {  // store distinct color PER device
@@ -485,14 +476,15 @@
     let __heartbeat_blurred = 1e3 * 60 * 30;
     let heartbeat_msecs; // number of milliseconds polling the back-end for new data
 
+    let __heartbeat_interval = 0;
+
     let __setHeartbeat = new_heartbeat_msecs => {
-        let interval;
         heartbeat_msecs = new_heartbeat_msecs;    // global
-        $_log("Change Heartbeat:", "orange;color:black", heartbeat_msecs);
+        $_log("Change Heartbeat:.orange;color:black", heartbeat_msecs);
         $_innerHTML($_getElementById('heartbeat'), heartbeat_msecs);
         if ($_isDefined($_QueryManager)) {
-            window.clearInterval(interval);
-            interval = window.setInterval(() => {
+            window.clearInterval(__heartbeat_interval);
+            __heartbeat_interval = window.setInterval(() => {
                 //$_log("Heartbeat:", "orange;color:black", heartbeat_msecs);
                 document.getElementById('heartbeat_heart').classList.toggle('heartbeating');
                 $_innerHTML($_getElementById('heartbeat_time'), $_dateStr(new Date(), $_date_Default_LongDate));
@@ -514,7 +506,7 @@
 
     class ITpings_Query_Manager {
         static _log() {
-            $_logApp("QueryManager.purple", ...arguments);
+            $_log("QueryManager.purple", ...arguments);
         }
 
         constructor(_QM = this) {
@@ -598,58 +590,6 @@
          */
         pollServer(endpoint) {
             let _QM = this;
-            let newPoll = (endpoint, milliseconds = heartbeat_msecs) => window.setTimeout(() => _QM.pollServer(endpoint), milliseconds);
-
-            let poll_Registered_Elements = json => {
-                this["pulse"].forEach((datasrcMap, datasrc) => {
-                    //ITpings_Query_Manager._log(datasrcMap, datasrc);
-                    datasrcMap.forEach((fieldSet, idfield) => {
-                        //ITpings_Query_Manager._log(fieldSet, idfield);
-                        fieldSet.forEach(ITpings_element => {
-                            let idvalue = json["maxids"]["pings"]["_pingid"]; //todo remove hardcoded _pingid
-                            ITpings_Query_Manager._log(datasrc + ".pollServer(" + idvalue + ")");
-                            ITpings_element.pollServer(idvalue);// method defined on CustomElement !!!
-                        });
-                    })
-                })
-            };
-
-            let loopAllJSON_IDs = () => {
-                let maxids = json["maxids"]; // declare all variable up-front for better minification
-                let setting;
-                let idfield;
-                let idvalue;
-                let datasrcMap;
-                let fieldSet;
-                $_Object_keys(maxids).map(datasrc => {
-                    // ** See above, I developed this way too complex, thinking in multiple Dashboards and a shitload of Devices
-                    // ** But this works: Read maxids JSON structure from DBInfo (these are just ID values, NOT the new Data!)
-                    // ** walk over JSON structure, match it with the registered tables/graphs
-                    // ** and contact/pulse every registered ITpings Custom Element
-                    // ** The Custom Element itself will check if it needs to call the MySQL DB itself to get the actual data
-                    setting = maxids[datasrc];
-                    //idfield = $_Object_keys(setting)[0];
-                    [idfield] = $_Object_keys(setting);         // ES6 Destructuring
-                    idvalue = setting[idfield];
-                    datasrcMap = _QM["pulse"].get(datasrc);
-                    if (datasrcMap) {
-                        ITpings_Query_Manager._log(21, datasrc, maxids[datasrc]);
-                        fieldSet = datasrcMap.get(idfield);
-                        if (fieldSet) {
-                            fieldSet.forEach(ITpings_element => {
-                                ITpings_Query_Manager._log('say pollServer to', ITpings_element);
-                                ITpings_element.pollServer(idvalue);
-                            });
-                        } else {
-                            ITpings_Query_Manager._log("No fieldSet", datasrc, idfield, idvalue, datasrcMap, fieldSet);
-                        }
-                    } else {
-                        ITpings_Query_Manager._log('no datasrcMap for:', datasrc);
-                    }
-                });
-                newPoll(__DB_PingID_endpoint);
-            };
-
             $_fetch(__localPath(endpoint))
                 .then(json => {
                     if (endpoint === __DB_PingID_endpoint) {    // single value max(_pingid)
@@ -662,14 +602,15 @@
                         }
                     } else {
                         ITpings_Query_Manager._log("heartbeat:" + heartbeat_msecs, "Got recent ID values from Database. _pingid=", json.maxids.pings._pingid, json);
-
-                        /**
-                         * New Temperature/Light graphing does not have matching maxids value in the JSON response
-                         * So refactored the code to (better) Loop all registered elements (then assuming everyone uses _pingid)
-                         * **/
-                        //loopAllJSON_IDs(json);
-                        poll_Registered_Elements(json);
-
+                        _QM["pulse"].forEach((datasrcMap, datasrc) => {
+                            datasrcMap.forEach(fieldSet => {
+                                fieldSet.forEach(ITpings_element => {
+                                    let idvalue = json["maxids"]["pings"]["_pingid"]; //todo remove hardcoded _pingid
+                                    ITpings_Query_Manager._log(datasrc + ".pollServer(" + idvalue + ")");
+                                    ITpings_element.pollServer(idvalue);// method defined on CustomElement !!!
+                                });
+                            })
+                        })
                     }
                 }).catch(e => console.error(e));
         }
@@ -678,13 +619,17 @@
 //endregion ======================================================= QueryManager for all itpings-table & itpings-chart Custom Elements
 
     let $WC_log = function () { // can not use array function, because this scope will be the window
-        $_logApp("WebComponent.dodgerblue", ...arguments);
+        $_log("WebComponent.dodgerblue", ...arguments);
     };
 
     let $WC_saveCachedData_To_localstorage = (WC, rowCount = 9999) => {
-        if (!WC.hasAttribute(["nocache"]) && WC.rows && WC.rows.length > 0) {
+        if (!WC.hasAttribute("nocache") && WC.rows && WC.rows.length > 0) {
             WC.rows = $_lastNelements(WC.rows, rowCount);
-            $WC_log('$WC_saveCachedData_To_localstorage: Save', WC.rows.length, "rows as key:" + WC._WebComponent_ID);
+            try {
+                $WC_log('$WC_saveCachedData_To_localstorage: Save', WC.rows.length, "rows as key:" + WC._WebComponent_ID, "\nfirst:", WC.rows[0], "\nlast:", WC.rows[WC.rows.length - 1]);
+            } catch (e) {
+                console.error(e, WC.rows);
+            }
             $_localstorage_Set(WC._WebComponent_ID, {//todo catch error when localStorage is full (save less rows)
                 [$_DEF.ITpings_cached]: new Date(),
                 [$_DEF.ITpings_result]: WC.rows
@@ -692,20 +637,21 @@
         }
     };
 
+//region ========================================================== Custom Element: itpings-table
+
     (function (elementName = $_custom_element_Namespace + "table") {
         let _traceCustomElement = true; // for educational purposes, trace specific CustomElement operations to the console
 
         window.customElements.define(elementName, class extends HTMLElement {
             _log() {
-                $_log(elementName + ":" + (this._WebComponent_ID || 'INIT'), "#99e6ff", ...arguments);
+                $_log(elementName + ":" + (this._WebComponent_ID || 'INIT') + ".#99e6ff;color:black;font-weight:bold", ...arguments);
             };
 
             // noinspection JSUnusedGlobalSymbols
             static get observedAttributes() {
-                let attributes = ["query"];          // data attributes (changes) this Custom Element listens to
-                //constructor has not run yet, so this scope is not available
-                //this._log(__TEXT_CUSTOM_ELEMENT_ATTRIBUTES, _observedAttributes);
-                return attributes;
+                // data attributes (changes) this Custom Element listens to
+                // constructor has not run yet, so this scope is not available
+                return ["query"];
             }
 
             get title() {
@@ -741,19 +687,26 @@
                 WC.requiredColumns = $_newSet();
                 this.setTitle();
 
-                let addCacheRows = (rows) => {
-                    if (rows.length > 1 && rows[0][WC.idfield] < rows[1][WC.idfield]) rows = rows.reverse();
-                    WC.rows = [...rows, ...WC.rows];
+                let addRows_to_WCrows = (rows) => {
+                    rows.forEach(row => {
+                        if (WC.rows.length > 0 && WC.rows[0][WC.idfield] < row[WC.idfield]) {
+                            WC.rows.unshift(row)
+                        } else {
+                            WC.rows.push(row)
+                        }
+                    });
                 };
                 /**
                  * if called as (headers) function idx is not defined, thus gets the THEAD reference
                  * if called as an Iterable, idx is the (array) index value
                  * **/
-                let add_TableRow = (row, idx = $_DEF.THEAD, currentArray) => {                       // abusing ES6 default value to check if the func is called to draw the THEAD
+                let add_TableRow = (row, idx = $_DEF.THEAD) => {                       // abusing ES6 default value to check if the func is called to draw the THEAD
                     let isTBODY = idx !== $_DEF.THEAD;
-                    // let insertAtTop = WC.rows[0] && row[WC.idfield] > WC.rows[0][WC.idfield];
-                    // //this._log('idx', idx, row[WC.idfield], insertAtTop ? '@Top' : '@Bottom');
-                    // if (insertAtTop) idx = 0;
+                    if (isTBODY) {
+                        let insertAtTop = WC.rows[0] && row[WC.idfield] > WC.rows[0][WC.idfield];
+                        // this._log('idx', idx, row[WC.idfield], insertAtTop ? '@Top' : '@Bottom');
+                        //if (insertAtTop) idx = 0;
+                    }
                     let TR = (isTBODY ? WC.TBODY : WC.THEAD).insertRow(idx);            // add TR at bottom of THEAD _OR_ bottom/top TBODY  (abusing idx)
 
                     let value;  // column value or header title
@@ -790,7 +743,7 @@
                             // ** mouseover a pingid and all other tables scroll to the same pingid
                             if (name === $_DEF.ID && __synchronized_pingID_table_scrolling) {
                                 $_setAttribute(WC.TBODY, "data-" + name, value);
-                                TR.addEventListener("mouseenter", () => {
+                                TR.addEventListener("mouseenter", function () {
                                     let dataname = "data-" + $_DEF.ID;                      // _pingid
                                     let _pingid = $_getAttribute(TR, dataname);
                                     let saved_backgroundColor = TR.style.backgroundColor;
@@ -809,11 +762,11 @@
                                         TR.addEventListener("mouseleave", () =>
                                             TRs.map(otherTR => {
                                                 $_setBackgroundColor(otherTR, saved_backgroundColor);
-                                                window.setTimeout(() => {
-                                                    let parentDIV = otherTR.parentNode.parentNode.parentNode;
-                                                    let savedScrollTop = hasMatchingTRs ? otherTR.savedScrollTop : 0;
-                                                    parentDIV.scrollTop = savedScrollTop;
-                                                }, 200)
+                                                // window.setTimeout(() => {
+                                                //     let parentDIV = otherTR.parentNode.parentNode.parentNode;
+                                                //     let savedScrollTop = hasMatchingTRs ? otherTR.savedScrollTop : 0;
+                                                //     parentDIV.scrollTop = savedScrollTop;
+                                                // }, 200)
                                             }));
                                         TR.hasMouseLeaveListener = true;
                                     }
@@ -834,6 +787,7 @@
                     WC.idle = false;                                                   // true again AFTER fetch processing is done
                     $_fetch(WC.uri + filter, localStorage_cachedData)
                         .then(json => {
+                            let wasCachedData = WC.hasCachedData;
                             WC.hasCachedData = __isCachedJSON(json);
                             let rows = __getResultArray(json);
                             try {
@@ -862,32 +816,46 @@
                                             WC.idfield = first_column_name;                     // take from attribute _OR_ first JSON row
                                             add_TableRow(headers);                              // first row keys are the THEAD columnheaders
 
+                                            this._log('order', WC.hasCachedData ? 'cached' : 'new', 'rows', rows[0][WC.idfield], rows[1] ? rows[1][WC.idfield] : 'single row');
                                             WC.columns = $_newSet(rows.forEach(add_TableRow));   // add all rows, register columns
-                                            addCacheRows(rows);
+                                            addRows_to_WCrows(rows);
 
 //                                        $_appendChild(WC.HEADER, WC.THEAD.cloneNode(true));
+                                            if (query === 'PingedDevices') intersectionObserver.observe(WC.TBODY);
 
                                             $_innerHTML(WC);                                    // remove Loading...
                                             $_appendChild(WC, WC.WRAPDIV);                      // now append that Custom Element to the DOM
                                             $_QueryManager.register_for_pollServer(WC);         // Register my -table query with the Query Manager, so I get (pollServer) updates
+                                            if (WC.hasCachedData) {
+                                                WC.idle = true;
+                                                this._log('catchup with new data', WC.maxid, WC.rows[0][WC.idfield], WC.rows);
+                                                this.fetchTableData("&filter=" + WC.idfield + " gt " + WC.rows[0][WC.idfield] + "&limit=none");
+                                                this.noPoll = true;
+                                            } else {
+                                                if (wasCachedData) {
+                                                    this.noPoll = false;
+                                                }
+                                            }
 
                                         } else if (rows.length) {                               // add new rows in a new TBODY at the top of the TABLE
-                                            // append new TBODY, overriding privious WC.TBODY reference
+                                            // append new TBODY, overriding previous WC.TBODY reference
                                             WC.TBODY = $_insertBefore(WC.TABLE, $_appendChild(WC.TABLE, $_createElement($_DEF.TBODY)), WC.TBODY);
-                                            $_classList_add(WC.TBODY, "newPing");               // animate background color of this newPing
+                                            if (!wasCachedData) $_classList_add(WC.TBODY, "newPing");               // animate background color of this newPing
 
                                             dataNewRows = rows.map(add_TableRow);               // add rows at top of TBODY
-                                            this._log(WC.query, dataNewRows.length, 'rows added to table');
+                                            this._log(query, dataNewRows.length, 'rows added to table');
 
-                                            addCacheRows(rows);
+                                            addRows_to_WCrows(rows);
 
                                             /** remove older TBODYs from DOM **/
-                                            let TBODYs = document.querySelectorAll("[query='${query}'] TBODY");
+                                            let selector = `[query='${query}'] TBODY`;
+                                            let TBODYs = document.querySelectorAll(selector);
                                             let TBODYsCount = TBODYs.length;
                                             if (TBODYsCount > 120) WC.TABLE.removeChild(TBODYs[TBODYsCount - 1]); // 2 hours if Device pings every 30 seconds
                                         } else {
                                             console.warn("empty result set from:", WC.uri);
                                         }
+                                        console.log('first:', WC.rows[0]);
                                         $WC_saveCachedData_To_localstorage(WC, $_cacheRowCount);
                                         WC.idle = true;                                        // processed all rows
                                         this.setTitle(WC["title"] || WC["query"]);
@@ -896,7 +864,7 @@
 
                                 } else {
                                     console.error(json);
-                                    msg = json.statusText;
+                                    let msg = json.statusText;
                                     if (json.status === 500) msg = json.url + "Script exceeded PHP execution time, make the query faster or reduce the amount of data in the MySQL database";
                                     $_appendChild(WC,
                                         $_createDIV_withClass(
@@ -945,7 +913,7 @@
                 // ** called for every change for (ObservedDataAttributes only) Data-attributes on the HTML tag
                 // ** So also at first creation in the DOM
                 let WC = this;
-                let isConnected = WC.isConnected;                                     // sparsely documented standard property
+                let isConnected = WC.isConnected;                                     // sparsely documented standard property on DOM elements
                 if (attr === "query") {
                     WC.uri = __localPath(newValue);
                     if (_traceCustomElement) this._log(__TEXT_CUSTOM_ELEMENT_ATTRIBUTECHANGED, ", attr:" + attr, ", oldValue:" + oldValue, ", newValue" + newValue, isConnected ? emptyString : "►► NOT", "Connected");
@@ -966,6 +934,20 @@
                      *          TBODY (older)  (created below)
                      * **/
                     let ITPINGS_DIV = WC.WRAPDIV = $_createDIV_withClass(emptyString, "table-wrapper");
+
+                    // let last_known_scroll_position = 0;
+                    // let ticking = false;
+                    //
+                    // ITPINGS_DIV.addEventListener('scroll', function (e) {
+                    //     last_known_scroll_position = ITPINGS_DIV.scrollTop;
+                    //     if (!ticking) {
+                    //         window.requestAnimationFrame(function () {
+                    //             $_log("", ITPINGS_DIV.scrollTop, ITPINGS_DIV.scrollHeight, ticking ? 'IS' : 'NOT', 'Ticking');
+                    //             ticking = false;
+                    //         });
+                    //         ticking = true;
+                    //     }
+                    // });
 
                     WC.HEADER = $_appendChild(ITPINGS_DIV, $_createElement($_DEF.TABLE));                   // new TABLE inside DIV with WC.TABLE reference
                     $_classList_add(WC.HEADER, "sticky-header");
@@ -988,8 +970,10 @@
                      * There is no data in the <TABLE> yet, data arrives in the async fetch Data call
                      * So the Custom Element HTML above will be injected into the DOM in that fetch Data call **/
 
-                    let cachedDataKey = WC.hasAttribute(["nocache"]) ? false : WC._WebComponent_ID;
-                    this.fetchTableData(emptyString, cachedDataKey);  // call ONCE with an empty filter value
+                    let cachedDataKey = WC.hasAttribute("nocache") ? false : WC._WebComponent_ID;
+                    let limit_attribute = $_getAttribute(WC, "limit");
+                    let filter = limit_attribute ? "&limit=" + limit_attribute : "";
+                    this.fetchTableData(filter, cachedDataKey);  // call ONCE with an empty filter value
                 }
             }
 
@@ -1000,6 +984,9 @@
         }); // window.customElement()
     })(); // function (elementName = "itpings-table")
 
+//endregion ========================================================== Custom Element: itpings-table
+
+//region ========================================================== Custom Element: itpings-chart
 
     (function (elementName = $_custom_element_Namespace + "chart") {
         let _traceCustomElement = true; // for educational purposes, trace specific CustomElement operations to the console
@@ -1008,39 +995,40 @@
         let __INTERVAL_DEFAULT = "6H";
         let __INTERVALS = $_newMap();
         // ES6 Destructuring, parameter names become keys: {interval:interval, unit:unit, xformat:xformat}
-        let addInterval = (key, interval, maxrows, unit, xformat) => __INTERVALS.set(key, {
+        let addInterval = (key, interval, maxrows, unit, xformat, by10minutes) => __INTERVALS.set(key, {
             interval,
             maxrows,
             unit,
-            xformat
+            xformat,
+            by10minutes
         });
+        let by10minutes = true;//select only whole 0,10,20,30,40,60 minutes (created) data
         /** seperate calls; easier to disable than an Array structure **/
-        addInterval("5m", 5, 20, $_DEF.MINUTE, $_dateFormat_Hmm);
-        addInterval("30m", 30, 60, $_DEF.MINUTE, $_dateFormat_Hmm);
-        addInterval("1H", 1, 120, $_DEF.HOUR, $_dateFormat_Hmm);
-        addInterval("2H", 2, 240, $_DEF.HOUR, $_dateFormat_Hmm);
-        addInterval("6H", 6, 380, $_DEF.HOUR, $_dateFormat_Hmm);
-        addInterval("1D", 1, 380, $_DEF.DAY, $_dateFormat_Hmm);
-        addInterval("2D", 2, 380, $_DEF.DAY, $_dateFormat_DMMMHmm);
-        addInterval("7D", 7, 380, $_DEF.DAY, $_dateFormat_DMMMHmm);
-        addInterval("2W", 2, 500, $_DEF.WEEK, $_dateFormat_DMMMHmm);
-        addInterval("1M", 1, 4000, $_DEF.MONTH, $_dateFormat_DMMM);
-        addInterval("6M", 6, 1000, $_DEF.MONTH, $_dateFormat_DMMM);
+        addInterval("5m", 5, 20, $_DEF.MINUTE, $_dateFormat_Hmm, false);
+        addInterval("30m", 30, 60, $_DEF.MINUTE, $_dateFormat_Hmm, false);
+        addInterval("1H", 1, 120, $_DEF.HOUR, $_dateFormat_Hmm, false);
+        addInterval("2H", 2, 240, $_DEF.HOUR, $_dateFormat_Hmm, by10minutes);
+        addInterval("6H", 6, 380, $_DEF.HOUR, $_dateFormat_Hmm, by10minutes);
+        addInterval("1D", 1, 380, $_DEF.DAY, $_dateFormat_Hmm, by10minutes);
+        addInterval("2D", 2, 380, $_DEF.DAY, $_dateFormat_DMMMHmm, by10minutes);
+        addInterval("7D", 7, 380, $_DEF.DAY, $_dateFormat_DMMMHmm, by10minutes);
+        addInterval("2W", 2, 500, $_DEF.WEEK, $_dateFormat_DMMMHmm, by10minutes);
+        addInterval("1M", 1, 1000, $_DEF.MONTH, $_dateFormat_DMMM, by10minutes);
+        addInterval("6M", 6, 1000, $_DEF.MONTH, $_dateFormat_DMMM, by10minutes);
 //            addInterval("1Y", 1, $_DEF.YEAR, $_dateFormat_DMMM);
 
 
         window.customElements.define(elementName, class extends HTMLElement {
             _log() {
-                $_log(elementName + ":" + (this._WebComponent_ID || 'INIT'), "#33ccff", ...arguments);      //blue-ish
+                $_log(elementName + ":" + (this._WebComponent_ID || 'INIT') + ".#3cf;color:black;font-weight:bold", ...arguments);
             };
 
 //region ========================================================== Custom Element Getters/Setters for itpings-chart
             // noinspection JSUnusedGlobalSymbols
             static get observedAttributes() {
-                let _observedAttributes = [$_DEF.sensor, "interval"];
                 //constructor has not run yet, so this scope is not available
                 //this._log(__TEXT_CUSTOM_ELEMENT_ATTRIBUTES, _observedAttributes);
-                return _observedAttributes;
+                return [$_DEF.sensor, "interval"];
             }
 
             get title() {
@@ -1085,19 +1073,19 @@
                 if (ITPings_graphable_PingedDevices_Values.includes(sensor)) {
                     WC.query = "PingedDevices";
                     WC.uri = __localPath(WC.query);
-                    WC.value_field_name = sensor;
                     WC.deviceid_field_name = $_DEF.dev_id;
+                    WC.value_field_name = sensor;
                 } else {
                     if (['Temperature'].includes(sensor)) {
                         WC.query = sensor;
                         WC.uri = __localPath(sensor);
-                        WC.value_field_name = "value";
                         WC.deviceid_field_name = $_DEF.ITpings_devid;
+                        WC.value_field_name = "value";
                     } else {
                         WC.query = "SensorValues";
                         WC.uri = __localPath(`${WC.query}&sensorname=${sensor}`);
-                        WC.value_field_name = "sensorvalue";
                         WC.deviceid_field_name = $_DEF.dev_id;
+                        WC.value_field_name = "sensorvalue";
                     }
                 }
                 WC.uri += `&orderby=created&interval=${intervalDefinition.interval}`;
@@ -1118,6 +1106,10 @@
 
                 this._log(WC.ChartJS ? "Chart.js.destroy()" : "new ChartJS()");
                 if (WC.ChartJS) WC.ChartJS["destroy"]();            // Uglify Mangle protection
+
+                // resources axes:
+                // https://code.tutsplus.com/tutorials/getting-started-with-chartjs-scales--cms-28477
+                // https://stackoverflow.com/questions/37250456/chart-js-evenly-distribute-ticks-when-using-maxtickslimit/37257056
                 WC.ChartJS = new Chart(WC.CANVAS, {
                     "type": "line",
                     "data": {
@@ -1151,6 +1143,7 @@
                                 // type: 'time',    // requires MomentJS !!
                                 ticks: {
                                     autoSkip: true,
+                                    maxRotation: 45,
                                     maxTicksLimit: 10
                                 },
                             }]
@@ -1172,7 +1165,12 @@
                         //     }]
                         // }
                     }
-                });
+                });//ChartJS json config
+
+                // custom x-axis labels:
+                //https://stackoverflow.com/questions/37250456/chart-js-evenly-distribute-ticks-when-using-maxtickslimit/37257056
+
+                //axis docs: https://www.chartjs.org/docs/latest/axes/
             }
 
             drawChartJS(rows = false) {
@@ -1181,7 +1179,7 @@
                 WC._log('has', WC.rows.length, 'rows. Draw ', rows.length, 'new rows with ChartJS');
                 let ChartJS_datasets = WC.ChartJS["data"]["datasets"];
                 let ChartJS_labels = WC.ChartJS["data"]["labels"];
-                rows.forEach((row, index) => {
+                rows.forEach(row => {
                     let x_time = $_dateStr(row[$_DEF.created], WC.current_interval.xformat);         // format x-axis label with timestamp
                     if (!ChartJS_labels.includes(x_time)) {                                     // prevent duplicate timelables on x-axis
                         let lineID = row[WC.deviceid_field_name];                               // one graphed line per device
@@ -1189,7 +1187,7 @@
                         if (dataset_idx < 0) {                                                  // ** add new device
                             dataset_idx = ChartJS_datasets.length;
                             let deviceColor = DeviceColors.getColor(lineID);                    // get distinct color from Map
-                            console.log(`%c newDevice: (${WC.deviceid_field_name}) = ${lineID}  `, "color:white;background:" + deviceColor);
+                            $_log(`newDevice: (${WC.deviceid_field_name}) = ${lineID} .${deviceColor}`);
                             ChartJS_datasets.push({                                             // add one new line/device data to ChartJS
                                 "label": lineID
                                 , "fill": false
@@ -1233,9 +1231,14 @@
                     this.setTitle(__TEXT_RETREIVING_DB_VALUES);                             // set title to busy indicator
                     this.showIntervals(false);
                 }
+                if (WC.current_interval.by10minutes) filter += '&by10minutes=true';
+                WC._log('fetchChartData', filter, WC.current_interval);
                 $_fetch(WC.uri + filter, localStorage_cachedData)
                     .then(json => {
                         let rows = __getResultArray(json);
+                        if (!rows) {
+                            console.error(json);
+                        }
                         try {
                             let _lastID = array => ($_last(array)[WC.idfield]);             // get (highest) id field (from last row)
                             let interval = WC.current_interval;
@@ -1264,6 +1267,7 @@
                                         this.initChartJS();
                                         WC.rows = [];
                                     }
+                                    console.warn(rows);
                                     rows.map(row => {                                       // process (new) rows
                                         WC[$_DEF.ID] = row[$_DEF.ID];                     // keep track of hightest Primary Key value (presuming always getting a higher pingid)
                                         WC.rows.push(row);
@@ -1347,11 +1351,11 @@
 
                 /** now built DOM structure:
                  *
-                 * <DIV .chart-wrapper>
-                 *     <DIV .chartjs-size-monitor (inserted by ChartJS)
-                 *     <DIV .itpings-div-title
-                 *     <DIV .chart_interval
-                 *     <CANVAS
+                 * DIV .chart-wrapper>
+                 *     DIV .chartjs-size-monitor (inserted by ChartJS)
+                 *     DIV .itpings-div-title
+                 *     DIV .chart_interval
+                 *     CANVAS
                  * **/
 
                 WC.CAPTION = _append($_createDIV_withClass(sensor, "itpings-div-title"));
@@ -1366,7 +1370,6 @@
                 /** append CANVAS to ITPINGS_DIV **/
                 WC.CANVAS = _append($_createElement("CANVAS"));
 
-
                 $_appendChild(WC, ITPINGS_DIV);                                             // now _append that sucker to the DOM
 
 
@@ -1380,62 +1383,19 @@
         }); // window.customElement()
     })(); // function (elementName = "itpings-chart")
 
-
-    (function (elementName = $_custom_element_Namespace + "json") {
-        let _traceCustomElement = true; // for educational purposes, trace specific CustomElement operations to the console
-
-        window.customElements.define(elementName, class extends HTMLElement {
-            _log() {
-                $_log(elementName + ":" + (this._WebComponent_ID || 'INIT'), "#0099cc", ...arguments);      // blue-ish
-            };
-
-            //region ========================================================== Custom Element Getters/Setters
-            // noinspection JSUnusedGlobalSymbols
-            static get observedAttributes() {
-                let _observedAttributes = [$_DEF.sensor, "interval"];
-                //constructor has not run yet, so this scope is not available
-                //this._log(__TEXT_CUSTOM_ELEMENT_ATTRIBUTES, _observedAttributes);
-                return _observedAttributes;
-            }
-
-            //endregion
-
-            // noinspection JSUnusedGlobalSymbols
-            constructor() {
-                super();
-            }
-
-            // noinspection JSUnusedGlobalSymbols
-            attributeChangedCallback(attr, oldValue, newValue) {
-                let WC = this;
-                let isConnected = WC.isConnected;
-                switch (attr) {
-                    case("interval"):
-                        if (isConnected) {
-                        }
-                        break;
-                    default:
-                        break;
-                }
-            }
-
-            // noinspection JSUnusedGlobalSymbols
-            connectedCallback() {
-                let WC = this;
-            }
-
-            // noinspection JSUnusedGlobalSymbols
-            disconnectedCallback() {
-                this._log("disconnected", this.isConnected ? "connected" : "NOT connected");
-            }
+    let intersectionObserver = new IntersectionObserver(function (entries) {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) console.log('io ', entry.target.parentNode.parentNode.parentNode.computedName, entry.intersectionRatio, entry);
         });
-    })(); // function (elementName = "itpings-json")
+    });
+
+//endregion ======================================================= Custom Element: itpings-table
 
 //region ========================================================== Basic Router with Templates
 
     class Router {
         static _log() {
-            $_logApp("Router.teal", ...arguments);
+            $_log("Router.teal", ...arguments);
         }
 
         static routeId(route) {
@@ -1540,7 +1500,7 @@
 
             window.$_ready(() => {
                 __ITpings_Router = new Router({"preload": true});
-                __ITpings_Router.preloadAll();
+                //__ITpings_Router.preloadAll();
                 __ITpings_Router.goRoute();
             });
 

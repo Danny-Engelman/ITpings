@@ -19,6 +19,7 @@
 * remember: 
 	* The ``ITpings_access_database.php`` file is the only required personal configuration file
 	* The ``ITpings_configuration`` is for advanced level configuration
+	* You can tailor your sensor/triggers in the ``ITpings_sensor_triggers.php`` file
 
 	![](https://i.imgur.com/u0jJ82F.jpg)
 

@@ -7,6 +7,7 @@ include('ITpings_sensor_triggers.php');
 //region ===== HELPER FUNCTIONS ===================================================================
 
 /**
+ * Check if $haystack contains $needle
  * @param $haystack
  * @param $needle
  * @return bool
@@ -17,11 +18,10 @@ function contains($haystack, $needle)
 }
 
 /**
+ * brutal approach against SQL injection attempts in QueryString Parameters
+ * Return first element after split on 'illegal' SQL characters
  * @param $str
  * @return mixed
- *
- * brutal approach against SQL injection attempts
- * Return first element after split on 'illegal' SQL characters
  */
 function SQL_InjectionSave_OneWordString($str)
 {
@@ -29,10 +29,10 @@ function SQL_InjectionSave_OneWordString($str)
 }
 
 /**
- * returns TRUE when $lat and $lon have no decimals (most likely a fake location)
+ * Test if a Lat/Lon location has decimals, to filter (fake) entries like 10,20
  * @param $lat
  * @param $lon
- * @return bool
+ * @return bool - TRUE when $lat and $lon have no decimals (most likely a fake location)
  */
 function is_Location_without_Decimals($lat, $lon)
 {
@@ -71,6 +71,10 @@ $JSON_response['errors'] = [];
 $JSON_response['maxids'] = FALSE;
 $JSON_response['result'] = FALSE;
 
+/**
+ * Record how long the PHP processing took
+ * Return JSON data to the document output
+ */
 function return_JSON_response()
 {
     global $JSON_response;
@@ -78,6 +82,10 @@ function return_JSON_response()
     print json_encode($JSON_response);
 }
 
+/**
+ * Clean up JSON structure when the data isn't required
+ * The declarations were added to the Top of the document before, so the user sees them at the Top of the document (and does not have to scroll down)
+ */
 function remove_no_longer_required_keys_from_JSON_response()
 {
     global $JSON_response;
@@ -93,15 +101,22 @@ function remove_no_longer_required_keys_from_JSON_response()
     unset($JSON_response['errors']);
     unset($JSON_response['result']);
     unset($JSON_response['sql']);
-
 }
 
+/**
+ * add every error to the error Array
+ * @param $error - String
+ */
 function add_JSON_error_to_JSON_response($error)
 {
     global $JSON_response;
     array_push($JSON_response['errors'], $error);
 }
 
+/**
+ * Add every text msg to the messages array
+ * @param $msg - String
+ */
 function add_JSON_message_to_JSON_response($msg)
 {
     global $JSON_response;
@@ -159,6 +174,7 @@ function skip_every_Nth_row_From_SQL_result($result, $maxrows)
 }
 
 /**
+ * Execute $sql query, returning rows or undefined
  * @param $sql
  * @return bool|mysqli_result
  */
@@ -178,6 +194,8 @@ function SQL_QUERY_ROWS($sql)
 }
 
 /**
+ * Execute a SQL delete statement,
+ * adding SQL statement to Event and the JSON Output (always handy for enduser)
  * @param $sql
  * @return bool|mysqli_result
  */
@@ -199,6 +217,8 @@ function SQL_DELETE($sql)
 }
 
 /**
+ * Main SQL query function
+ *
  * RETURNS FIRST!!!! ROW OR JSON ENCODED OUTPUT
  *
  * @param $sql
@@ -253,20 +273,6 @@ function SQL_Query($sql, $returnJSON = FALSE)
         return_JSON_response();
     }
     return false;
-}
-
-/**
- * @param $table_name
- * @param $sql
- * @return bool|mysqli_result
- */
-function SQL_CREATE_TABLE($table_name, $sql)
-{
-    global $MySQL_DB_Connection;
-
-    insert_TTN_Event(ENUM_EVENTTYPE_NewTable, $table_name, $sql);
-
-    return mysqli_query($MySQL_DB_Connection, $sql);
 }
 
 /**
@@ -339,6 +345,72 @@ function Valued($val)
 //endregion == MYSQL DATABASE ACCESS ==============================================================
 
 //region ===== CREATE ITPINGS DATABASE : TABLES ===================================================
+
+/**
+ * @param $table_name
+ * @param $primary_key_name - can be False to indicate this table has NO primary key
+ * @param $primary_key_type
+ * @param $fields - array of ['fieldname','fieldtype','fieldcomment']
+ * @param $foreignkeys - array of ['foreignkeyname','declaration']
+ * @return bool|mysqli_result
+ */
+function create_Table($table_name, $primary_key_name, $primary_key_type, $fields, $foreignkeys)
+{
+    global $MySQL_DB_Connection;
+
+    $sql = "CREATE TABLE IF NOT EXISTS $table_name";
+    $sql .= " (";
+    // add Primary Key field (not all tables have Primary Keys)
+    if ($primary_key_name) {
+        $sql .= "$primary_key_name $primary_key_type UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT COMMENT 'ITpings Primary Key' , ";
+    }
+    //add Table fields
+    if (is_array($fields) || is_object($fields)) {
+        foreach ($fields as $index => $field) {
+            if ($index > 0) $sql .= " , ";
+            $sql .= " $field[0] $field[1] COMMENT '$field[2]'";
+        }
+    }
+    // add Foreign Keys
+    if (is_array($foreignkeys) || is_object($foreignkeys)) {
+        foreach ($foreignkeys as $index => $key) {
+            $sql .= " , FOREIGN KEY ($key[0]) $key[1]";
+        }
+    }
+    // add Primary Key
+    if ($primary_key_name) {
+        $sql .= " , PRIMARY KEY ($primary_key_name)";
+    }
+    $sql .= ") ENGINE=InnoDB DEFAULT CHARSET=utf8;";
+
+    insert_TTN_Event(ENUM_EVENTTYPE_NewTable, $table_name, $sql);
+    return mysqli_query($MySQL_DB_Connection, $sql);
+}
+
+/**
+ * create Lookup Table (Frequencies,Moldulations,Datarates,Codingrates,Location)
+ * @param $table
+ * @param $primary_key_name
+ * @param $field_name
+ * @param $field_datatype
+ * @return array
+ */
+function create_LookupTable($table, $primary_key_name, $field_name, $field_datatype)
+{
+    create_Table($table
+        , $primary_key_name
+        , TYPE_FOREIGNKEY_LOOKUPTABLE
+        , [[$field_name, $field_datatype, "TTN " . $field_name]]
+        , NO_FOREIGNKEYS
+    );
+
+    // return declaration for Lookup table
+    return [
+        $primary_key_name
+        , TYPE_FOREIGNKEY_LOOKUPTABLE
+        , " REFERENCES " . $table];
+}
+
 /** Create Database Schema with tables:
  * events
  * origins
@@ -404,39 +476,6 @@ function create_ITpings_Tables()
     global $_FOREIGNKEY_SENSORS;
     global $_FOREIGNKEY_LOCATIONS;
 
-    /**
-     * @param $table_name
-     * @param $primary_key_name - can be False to indicate this table has NO primary key
-     * @param $primary_key_type
-     * @param $fields - array of ['fieldname','fieldtype','fieldcomment']
-     * @param $foreignkeys - array of ['foreignkeyname','declaration']
-     */
-    function create_Table($table_name, $primary_key_name, $primary_key_type, $fields, $foreignkeys)
-    {
-        $sql = "CREATE TABLE IF NOT EXISTS $table_name";
-        $sql .= " (";
-        if ($primary_key_name) {
-            $sql .= "$primary_key_name $primary_key_type UNSIGNED NOT NULL UNIQUE AUTO_INCREMENT COMMENT 'ITpings Primary Key' , ";
-        }
-        if (is_array($fields) || is_object($fields)) {
-            foreach ($fields as $index => $field) {
-                if ($index > 0) $sql .= " , ";
-                $sql .= " $field[0] $field[1] COMMENT '$field[2]'";
-            }
-        }
-        if (is_array($foreignkeys) || is_object($foreignkeys)) {
-            foreach ($foreignkeys as $index => $key) {
-                $sql .= " , FOREIGN KEY ($key[0]) $key[1]";
-            }
-        }
-        if ($primary_key_name) {
-            $sql .= " , PRIMARY KEY ($primary_key_name)";
-        }
-        $sql .= ") ENGINE=InnoDB DEFAULT CHARSET=utf8;";
-//        echo "$sql<HR>";
-        SQL_CREATE_TABLE($table_name, $sql);
-    }
-
     create_Table(TABLE_EVENTS
         , NO_PRIMARYKEY
         , FALSE
@@ -487,30 +526,6 @@ function create_ITpings_Tables()
         ]
         , [$_FOREIGNKEY_APPLICATIONS, $_FOREIGNKEY_DEVICES]
     );
-
-    /**
-     * create Lookup Table (Frequencies,Moldulations,Datarates,Codingrates,Location)
-     * @param $table
-     * @param $primary_key_name
-     * @param $field_name
-     * @param $field_datatype
-     * @return array
-     */
-    function create_LookupTable($table, $primary_key_name, $field_name, $field_datatype)
-    {
-        create_Table($table
-            , $primary_key_name
-            , TYPE_FOREIGNKEY_LOOKUPTABLE
-            , [[$field_name, $field_datatype, "TTN " . $field_name]]
-            , NO_FOREIGNKEYS
-        );
-
-        // return declaration for Lookup table
-        return [
-            $primary_key_name
-            , TYPE_FOREIGNKEY_LOOKUPTABLE
-            , " REFERENCES " . $table];
-    }
 
     $frequency_declaration = create_LookupTable(TABLE_FREQUENCIES
         , PRIMARYKEY_Frequency
@@ -969,6 +984,15 @@ function process_ApplicationDevice_Information()
 }
 
 /**
+ * @param $where
+ * @return array|null
+ */
+function find_location_in_TableLocations($where)
+{
+    return SQL_find_existing_key_id(PRIMARYKEY_Location, TABLE_LOCATIONS, $where);
+}
+
+/**
  * find an existing GEO location create a new Location
  * sets the found/created ID value in the global $request object
  * returns the existing OR new ID
@@ -993,11 +1017,6 @@ function process_Ping_and_Gateway_Location($lat, $lon, $alt, $location_source)
         $location_source = 1;
         //return 1;   // main gateway
     };
-
-    function find_location_in_TableLocations($where)
-    {
-        return SQL_find_existing_key_id(PRIMARYKEY_Location, TABLE_LOCATIONS, $where);
-    }
 
     //first check coordinates without height, later append altitude on $where
     $where = ITPINGS_LATITUDE . "=$lat AND " . ITPINGS_LONGITUDE . "=$lon";
@@ -1137,13 +1156,15 @@ function process_AllGateways()
 
         $gateway_time = $gateway[TTN_time];
 
+        $gateway_info = "$gatewayID - $gateway[TTN_gtw_id]";
+
         if ($gateway_time === "") {
             //sometimes time values are empty strings
             //
             insert_TTN_Event(
                 ENUM_EVENTTYPE_Error
                 , "Empty Gateway Time"
-                , "$gatewayID - " . $gateway[TTN_gtw_id]
+                , $gateway_info
             );
         }
 
@@ -1151,7 +1172,7 @@ function process_AllGateways()
             insert_TTN_Event(
                 ENUM_EVENTTYPE_Error
                 , "Duplicate Gateway in Gateways"
-                , $gatewayID
+                , $gateway_info
             );
         } else {
             array_push($processedGateways_InRequest, $gatewayID);
@@ -1299,7 +1320,7 @@ function process_Sensors_From_PayloadFields()
 
         }
     } else {
-        $error = $request[TTN_dev_id] . " " . implode(",", $request);
+        $error = $request[TTN_dev_id];
         insert_TTN_Event(ENUM_EVENTTYPE_Error, "Missing payload_fields", $error);
     }
 }
@@ -1307,6 +1328,28 @@ function process_Sensors_From_PayloadFields()
 //endregion == PROCESS POST REQUEST , SAVE DATA TO ALL TABLES =================================================
 
 //region ===== PROCESS GET QUERY ==================================================================
+
+/**
+ * @param $table
+ * @param $key
+ * @param bool $value
+ * @return bool|mixed
+ */
+function get_Maximum_ID($table, $key, $value = false)
+{
+    global $JSON_response;
+
+    if ($value === FALSE) {
+        $value = SQL_Query("SELECT MAX($key) AS mx FROM $table")['mx'];
+    }
+
+    $table = str_replace(TABLE_PREFIX, '', $table);
+
+    if (!isset($JSON_response['maxids'][$table])) $JSON_response['maxids'][$table] = [];
+    $JSON_response['maxids'][$table][$key] = (int)$value;
+
+    return $value;
+}
 
 /**
  * create a JSON structure with the most recent PrimaryKey value for Tables and Views
@@ -1318,36 +1361,20 @@ function attach_Max_IDs_to_JSON_response()
 
     $JSON_response['maxids'] = array();
 
-    function MAXID($table, $key, $value = false)
-    {
-        global $JSON_response;
-
-        if ($value === FALSE) {
-            $value = SQL_Query("SELECT MAX($key) AS mx FROM $table")['mx'];
-        }
-
-        $table = str_replace(TABLE_PREFIX, '', $table);
-
-        if (!isset($JSON_response['maxids'][$table])) $JSON_response['maxids'][$table] = [];
-        $JSON_response['maxids'][$table][$key] = (int)$value;
-
-        return $value;
-    }
-
-    MAXID(TABLE_APPLICATIONS, PRIMARYKEY_Application);
-    MAXID(TABLE_DEVICES, PRIMARYKEY_Device);
-    $event_pingid = MAXID(TABLE_EVENTS, PRIMARYKEY_Ping);
-    $gtwid = MAXID(TABLE_GATEWAYS, PRIMARYKEY_Gateway);
-    MAXID(TABLE_LOCATIONS, PRIMARYKEY_Location);
-    $pingid = MAXID(TABLE_PINGS, PRIMARYKEY_Ping);
-    MAXID(TABLE_SENSORS, PRIMARYKEY_Sensor);
+    get_Maximum_ID(TABLE_APPLICATIONS, PRIMARYKEY_Application);
+    get_Maximum_ID(TABLE_DEVICES, PRIMARYKEY_Device);
+    $event_pingid = get_Maximum_ID(TABLE_EVENTS, PRIMARYKEY_Ping);
+    $gtwid = get_Maximum_ID(TABLE_GATEWAYS, PRIMARYKEY_Gateway);
+    get_Maximum_ID(TABLE_LOCATIONS, PRIMARYKEY_Location);
+    $pingid = get_Maximum_ID(TABLE_PINGS, PRIMARYKEY_Ping);
+    get_Maximum_ID(TABLE_SENSORS, PRIMARYKEY_Sensor);
 
     //reuse already found ids
-    MAXID(VIEWNAME_SENSORVALUES, PRIMARYKEY_Ping, $pingid);
-    MAXID(VIEWNAME_PINGEDGATEWAYS, PRIMARYKEY_Ping, $pingid);
-    MAXID(VIEWNAME_PINGEDDEVICES, PRIMARYKEY_Ping, $pingid);
-    MAXID(VIEWNAME_EVENTS, PRIMARYKEY_Ping, $event_pingid);
-    MAXID(VIEWNAME_GATEWAYS, PRIMARYKEY_Gateway, $gtwid);
+    get_Maximum_ID(VIEWNAME_SENSORVALUES, PRIMARYKEY_Ping, $pingid);
+    get_Maximum_ID(VIEWNAME_PINGEDGATEWAYS, PRIMARYKEY_Ping, $pingid);
+    get_Maximum_ID(VIEWNAME_PINGEDDEVICES, PRIMARYKEY_Ping, $pingid);
+    get_Maximum_ID(VIEWNAME_EVENTS, PRIMARYKEY_Ping, $event_pingid);
+    get_Maximum_ID(VIEWNAME_GATEWAYS, PRIMARYKEY_Gateway, $gtwid);
 }
 
 /**
@@ -1633,6 +1660,16 @@ function process_Query_with_QueryString_Parameters()
 }
 
 /**
+ * Used as CallBack from the Implode
+ * @param $value
+ * @return string
+ */
+function convertValue_to_QuotedString_or_Integer($value)
+{
+    return is_string($value) ? Quoted($value) : $value;
+}
+
+/**
  * Continue from previous function(process_Query_with_QueryString_Parameters), built a valid $sql
  * @param $table_name
  * @param $sql
@@ -1687,7 +1724,7 @@ function post_process_Query($table_name, $sql)
                         break;
 
                     case QUERY_PARAMETER_BY10MINUTES:
-                            $where .= $and .  " MINUTE(" . ITPINGS_CREATED_TIMESTAMP . ") IN (0,10,20,30,40,50) ";
+                        $where .= $and . " MINUTE(" . ITPINGS_CREATED_TIMESTAMP . ") IN (0,10,20,30,40,50) ";
                         break;
 
                     case QUERY_PARAMETER_ORDERBY:
@@ -1726,13 +1763,8 @@ function post_process_Query($table_name, $sql)
                         } else {
                             if ($PARAMETER_HAS_SEPARATOR) {
                                 $where .= $and . "$parameter IN(";
-                                function convertValue($value)
-                                {
-                                    return is_string($value) ? Quoted($value) : $value;
-                                }
-
                                 $glue = QUERY_PARAMETER_SEPARATOR;
-                                $where .= implode($glue, array_map('convertValue', explode($glue, $parameter_value)));
+                                $where .= implode($glue, array_map('convertValue_to_QuotedString_or_Integer', explode($glue, $parameter_value)));
                                 $where .= ")";
                             } else {
                                 $parameter_value = (is_numeric($parameter_value) ? Valued($parameter_value) : Quoted($parameter_value));

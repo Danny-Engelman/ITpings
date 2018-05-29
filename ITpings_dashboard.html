@@ -21,8 +21,9 @@ Redux
     <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
     <!-- All the dependencies -->
-    <!--<script src="http://cdn.date-fns.org/1.9.0/date_fns.min.js"></script>-->
-    <!--<script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.19.1/moment.min.js"></script>-->
+    <script src="https://maps.google.com/maps/api/js?sensor=false&key=AIzaSyCrN2pjqTXqqo1eU9mFXW0bqCRuOI4z4Zo"></script>
+    <script src="https://developers.google.com/maps/documentation/javascript/examples/markerclusterer/markerclusterer.js"></script>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.2/Chart.min.js"></script>
 
     <!-- resource colors: https://flatuicolors.com/palette/nl -->
@@ -131,7 +132,15 @@ Redux
             background-color: var(--global--article--BackgroundColor);
         }
 
-        .grid_4by3 {
+        #placeholder_article_dashboard,
+        #placeholder_article_gateway,
+        #placeholder_article_devices,
+        #placeholder_article_hardware,
+        #placeholder_article_globe,
+        #placeholder_article_database,
+        #placeholder_article_controlpanel,
+        #placeholder_article_info {
+            height: 100%;
             display: grid;
             /* 3 rows , equal (fraction) height */
             grid-template-rows: repeat(3, 1fr);
@@ -185,6 +194,18 @@ Redux
         .bottom_right {
             grid-area: 3/4;
         }
+
+        .columns2-left {
+            grid-area: 1/1/4/3;
+        }
+
+        .columns2-right {
+            grid-area: 1/-3/-1/-1;
+        }
+
+        .columns1-left {
+            grid-area: 1/1/-1/1;
+        }
     </style>
     <style>
         .applicationTitle {
@@ -224,10 +245,11 @@ Redux
 
         .table-wrapper {
             max-height: calc(var(--global--article--Rowheight) + 1px);
-            overflow-x: hidden;
-            overflow-y: auto;
+            overflow-y: scroll;
             position: relative;
             border: 1px solid var(--global--Background-Title--Color);
+            /* translate3d enhances scrolling in Chrome Browser */
+            transform: translate3d(0, 0, 0);
         }
 
         /* display THEAD fixed to top of Table (actually a second Table with THEAD only) */
@@ -515,42 +537,47 @@ Redux
             }
         }
     </style>
-    <style id="Color new Pings">
-        TBODY.newPing .NewCell {
-            animation: fadeOut_NewPing 60s linear 0s;
-        }
+    <!--<style id="Color new Pings">-->
+    <!--TBODY.newPing_noFade .NewCell {-->
+    <!--background-color: var(&#45;&#45;global&#45;&#45;Background-fadeOut&#45;&#45;Color);-->
+    <!--color: black;-->
+    <!--}-->
 
-        TBODY.newPing .HistoricCell {
-            animation: fadeOut_HistoricPing 60s linear 0s;
-        }
+    <!--TBODY.newPing .NewCell {-->
+    <!--animation: fadeOut_NewPing 60s linear 0s;-->
+    <!--}-->
 
-        @keyframes fadeOut_NewPing {
-            0% {
-                background-color: var(--global--Background-fadeOut--Color);
-                color: black;
-            }
-            100% {
-                background-color: transparent;
-                color: darkgrey;
-            }
-        }
+    <!--TBODY.newPing .HistoricCell {-->
+    <!--animation: fadeOut_HistoricPing 60s linear 0s;-->
+    <!--}-->
 
-        @keyframes fadeOut_HistoricPing {
-            0% {
-                background-color: var(--global--Background-fadeOut--HistoricColor);
-                color: black;
-            }
-            100% {
-                background-color: transparent;
-                color: darkgrey;
-            }
-        }
+    <!--@keyframes fadeOut_NewPing {-->
+    <!--0% {-->
+    <!--background-color: var(&#45;&#45;global&#45;&#45;Background-fadeOut&#45;&#45;Color);-->
+    <!--color: black;-->
+    <!--}-->
+    <!--100% {-->
+    <!--background-color: transparent;-->
+    <!--color: darkgrey;-->
+    <!--}-->
+    <!--}-->
 
-        .unseen_warning {
-            background: orange;
-        }
+    <!--@keyframes fadeOut_HistoricPing {-->
+    <!--0% {-->
+    <!--background-color: var(&#45;&#45;global&#45;&#45;Background-fadeOut&#45;&#45;HistoricColor);-->
+    <!--color: black;-->
+    <!--}-->
+    <!--100% {-->
+    <!--background-color: transparent;-->
+    <!--color: darkgrey;-->
+    <!--}-->
+    <!--}-->
 
-    </style>
+    <!--.unseen_warning {-->
+    <!--background: orange;-->
+    <!--}-->
+
+    <!--</style>-->
     <style id="Loading_dots">
         /* Custom Element -table is created AFTER loading, so needs more markup in the .loading DIV title */
         itpings-table .loading {
@@ -737,34 +764,28 @@ Redux
     <!-- run script after CSS declarations, because script references above/existing styles -->
     <script language="JavaScript" src="ITpings_dashboard.js"></script>
 
-    <script type="text/html" id="error404">
-        <h1>404 Not found</h1>
-    </script>
-
 </head>
 <body>
 <!--TEMPLATES injected in ARTICLE -->
 <!--
-
-Templates are built with itpings-table and itpings-chart  W3C standard Custom Elements, custom HTML elements
-
+      Templates are built with itpings-table and itpings-chart custom HTML elements (W3C standard Custom Elements)
 -->
 <TEMPLATE id="article_dashboard">
     <!--row 1-->
-    <div class="top_left">
-        <!--<itpings-table query="Devices" title="All Devices" nocache></itpings-table>-->
-    </div>
+    <itpings-chart class="top_left" sensor="snr" title="SNR" interval="6H"></itpings-chart>
+    <itpings-chart class="middle_left" sensor="channel" title="Channel" interval="6H"></itpings-chart>
+    <!--<itpings-table query="Devices" title="All Devices" nocache></itpings-table>-->
     <!-- query="SensorValues" todo: PHP server timed out on this query.. -->
     <itpings-table class="top_center" query="PingedDevices" title="Pinged Devices"></itpings-table>
     <itpings-chart class="top_right" sensor="Temperature" title="Temperatures" interval="6H"></itpings-chart>
 
     <!--row 2-->
     <itpings-table class="middle_center" query="PingedGateways" title="Pinged Gateways"></itpings-table>
-    <itpings-chart class="middle_right" sensor="luminosity_6,light" title="Light" interval="6H"></itpings-chart>
+    <itpings-chart class="middle_right" sensor="Luminosity" title="Light" interval="6H"></itpings-chart>
 
     <!--row 3-->
     <itpings-table class="bottom_left" query="Events" title="ITpings Events" nocache limit="200"></itpings-table>
-    <itpings-chart class="bottom_center_right" sensor="analog_in_4,battery" title="Battery"
+    <itpings-chart class="bottom_center_right" sensor="Battery" title="Battery"
                    interval="6H"></itpings-chart>
     <itpings-chart class="bottom_right" sensor="rssi" title="RSSI" interval="6H"></itpings-chart>
 
@@ -793,7 +814,7 @@ Templates are built with itpings-table and itpings-chart  W3C standard Custom El
         }
     </style>
     <!--<itpings-json>-->
-        <!--<div id="JSONview">JSON</div>-->
+    <!--<div id="JSONview">JSON</div>-->
     <!--</itpings-json>-->
 </TEMPLATE>
 <TEMPLATE id="article_gateway">
@@ -804,16 +825,17 @@ Templates are built with itpings-table and itpings-chart  W3C standard Custom El
             <li>set location</li>
             <li>location+zoom in localstorage</li>
         </ul>
+        <!--<itpings-table class="middle_center" query="PingedGateways" title="Pinged Gateways"></itpings-table>-->
         <itpings-chart class="top_right" sensor="Temperature" title="Temperatures" interval="6H"></itpings-chart>
         <!--<itpings-table query="Gateways" fullheight title="" Gatways></itpings-table>-->
         <!--<itpings-table query="locations" title="Locations"></itpings-table>-->
     </div>
 </TEMPLATE>
-<TEMPLATE id="article_node">
+<TEMPLATE id="article_devices">
     <div class="ITpings_page">
-        <h1>Node</h1>
+        <h1>devices</h1>
         <ul>
-            <li>Node info, last seen, counters, rssi graph</li>
+            <li>devices info, last seen, counters, rssi graph</li>
         </ul>
         <!--<itpings-chart class="top_right" sensor="Temperature" title="Temperatures" interval="6H"></itpings-chart>-->
     </div>
@@ -824,15 +846,33 @@ Templates are built with itpings-table and itpings-chart  W3C standard Custom El
     </div>
 </TEMPLATE>
 <TEMPLATE id="article_globe">
-    <div class="ITpings_page">
-        <h1>Globe</h1>
-        Map
-    </div>
+    <!--<div class="ITpings_page">-->
+    <!--<h1>Globe</h1>-->
+    <!--</div>-->
+    <!--<itpings-map class="columns2-right"></itpings-map>-->
+    <!--<itpings-table class="columns2-left" query="Events" title="ITpings Events" nocache limit="200"></itpings-table>-->
+    <itpings-table class="bottom_left" query="events" limit="200"></itpings-table>
 </TEMPLATE>
+
+<TEMPLATE id="itpings-table">
+    <DIV class="table-wrapper">
+        <TABLE class="sticky-header">
+            <CAPTION class="itpings-div-title"></CAPTION>
+            <THEAD></THEAD>
+        </TABLE>
+        <TABLE class="data-table">
+            <TBODY>
+            </TBODY>
+        </TABLE>
+    </DIV>
+</TEMPLATE>
+
 <TEMPLATE id="article_database">
     <div class="ITpings_page">
         <h1>Database</h1>
         <!--<itpings-table query="DBInfo" title="ITpings Database Info" fullheight></itpings-table>-->
+        <!--<button id="dropDatabase">Drop Database</button>-->
+        <!--<button id="createDatabase">Create Database</button>-->
         <script>
             console.log('executed INline article_database script');
             let key = 'YOUR_PRIVATE_KEY';// but you better not use this on a public website!
@@ -847,6 +887,7 @@ Templates are built with itpings-table and itpings-chart  W3C standard Custom El
             __addClick('#dropDatabase', 'drop');
             __addClick('#createDatabase', 'create');
         </script>
+        https://365csi.nl/itpings.nl/ITpings_connector.php?query=CleanDataTables
     </div>
 </TEMPLATE>
 <TEMPLATE id="article_controlpanel">
@@ -855,15 +896,13 @@ Templates are built with itpings-table and itpings-chart  W3C standard Custom El
     </div>
 </TEMPLATE>
 <TEMPLATE id="article_info">
-    <div class="ITpings_page">
-        <h1>Info</h1>
-    </div>
+    <itpings-chart class="bottom_center_right" sensor="Battery" title="Battery" interval="6H"></itpings-chart>
 </TEMPLATE>
+
+
 <div class="grid_container">
     <header class="header">
-        <div class="applicationTitle">ITpings Dashboard
-            <!--<button id="dropDatabase">Drop Database</button>-->
-            <!--<button id="createDatabase">Create Database</button>-->
+        <div class="applicationTitle">ITpings Dashboard <span id="itpings_article_title"></span>
             <div id="header_info">
                 <div>
                     <span id="heartbeat_time"></span>
@@ -899,7 +938,7 @@ Templates are built with itpings-table and itpings-chart  W3C standard Custom El
             </a>
         </div>
         <div class="sidebar_icon">
-            <a href="#node">
+            <a href="#devices">
                 <svg viewBox="0 0 200 200">
                     <g transform="translate(0,200) scale(0.1,-0.1)">
                         <path d="M918 1899c-133-14-290-92-382-188l-40-41 29-30c16-16 32-30 35-30 3 0 28 20 55 45 60 56 142 106 215 131 42 15 83 19 175 19 106-1 128-4 189-28 73-29 182-101 214-142 25-32 32-31 67 5l29 30-40 41c-60 62-162 127-244 156-82 28-209 42-302 32zM920 1730c-104-19-194-67-265-140l-39-40 36-37 37-37 51 48c28 26 76 59 108 74 49 23 70 27 152 27 82 0 103-4 152-27 32-15 80-48 108-74l51-48 37 37 36 37-39 40c-106 109-283 167-425 140zM927 1560c-58-15-108-44-151-89l-40-41 34-35c19-19 38-35 43-35 4 0 20 14 35 31 76 91 229 90 305-1l28-33 37 34c20 19 39 35 41 37 13 7-89 94-132 113-58 24-144 33-200 19zM965 1383c-81-22-119-118-75-190 37-62 116-81 178-43 34 21 62 71 62 111 0 32-29 86-54 103-27 17-82 27-111 19zM556 1178c-126-127-186-270-186-444 0-184 56-320 185-450 127-128 262-184 445-184 183 0 319 56 445 184 128 130 185 267 185 445 0 177-58 318-181 444-42 42-80 77-85 77-5 0-38-29-74-65l-64-64 65-60c77-70 124-151 145-250 49-239-118-476-368-522-131-24-278 25-381 128-183 183-174 465 20 643l67 61-64 64c-36 36-68 65-73 65-5 0-42-33-81-72z"></path>
@@ -953,18 +992,19 @@ Templates are built with itpings-table and itpings-chart  W3C standard Custom El
     </aside>
     <article class="article-container">
         <!-- TEMPLATES will be injected below -->
-        <div id="placeholder_article_dashboard" class="grid_4by3" preload="true"></div>
-        <div id="placeholder_article_gateway"></div>
-        <div id="placeholder_article_node"></div>
-        <div id="placeholder_article_hardware"></div>
-        <div id="placeholder_article_globe"></div>
-        <div id="placeholder_article_database"></div>
-        <div id="placeholder_article_controlpanel"></div>
-        <div id="placeholder_article_info"></div>
+        <div id="placeholder_article_dashboard" title="Global Dashboard" preload="true"></div>
+        <div id="placeholder_article_gateway" title="Gateways"></div>
+        <div id="placeholder_article_devices" title="devices"></div>
+        <div id="placeholder_article_hardware" title="Hardware"></div>
+        <div id="placeholder_article_globe" title=""></div>
+        <div id="placeholder_article_database" title="Database"></div>
+        <div id="placeholder_article_controlpanel" title="Control Panel"></div>
+        <div id="placeholder_article_info" title="Information"></div>
     </article>
     <footer class="footer">
         <div class="ITpings_motto">(C) MIT-B(eer) License by: Danny Engelman &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-            ITpings is built without Frameworks, using CSS4, HTML5 and ES6, and works best in Chrome
+            &nbsp;&nbsp;ITpings is built without Frameworks, using CSS4, HTML5 and ES6, and works best in Chrome
+            (waiting for other Browsers to support modern W3C standard technologies)
             &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
             <span>
                 <a target="_blank" href="https://github.com/Danny-Engelman/ITpings">ITpings Source Code is available on GitHub</a></span>

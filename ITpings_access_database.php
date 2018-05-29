@@ -5,7 +5,6 @@
 // Typically the Web and Database server run on the same server: localhost
 // If your ISP has given you a hostname, first try without the :port number
 define('DBHOST', 'localhost');
-//define('DBHOST', 'fdb19.awardspace.net');
 //define('DBHOST', 'ourownserver.com:3306');
 
 // The database name given by your Database Administrator
@@ -16,6 +15,7 @@ define('DBUSERNAME', 'YOURUSERNAME');
 define('DBPASSWORD', 'YOURPASSWORD');
 
 // this key protects your webhook from being abused by others
+// The TTN HTTP Integration URI then is: ...\ITpings_connector.php?key=__ENTER_YOUR_PRIVATE_KEY_
 define('YOUR_ITPINGS_KEY', '__ENTER_YOUR_PRIVATE_KEY_');
 
 // [optional] open the ITpings_connector.php in your WebBrowser

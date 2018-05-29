@@ -23,9 +23,10 @@ With an **HTTP (request/response) Integration** the (TTN) Broker **pushes** all 
 
 ### MQTT Front-End
 
-A Front-End build using MQTT gives immediate responses.
+A Front-End build using MQTT gives immediate responses (but again requires authentication for **every** device)
 
-ITpings uses traditional short-polling, so has some latency. (see more below)
+ITpings uses traditional short-polling, so has some latency. (see more below)  
+It does not require any authentication for devices, so any device/application configured to use the HTTP Integration can send data.
 
 ## Use ITpings HTTP Integration and Dashboard in (under) 5 minutes
 
@@ -46,6 +47,21 @@ pointing to the ``YOURWEBSERVER/ITpings_connector.php?key=YOURKEY``
 ITpings will create the Database Schema once it receives the first (HTTP Integration) Ping
 
 5. Now open ``ITpings_dashboard.html`` on your WebServer
+
+## Version History
+
+* Version 2 - may 29, 2018
+	* Back End:
+		* split PHP code in seperate files
+		* sensor processing in (fairly) readable triggers.php file
+		* added SQL Table: ITpings__data\_accelerometer
+	* Front End:
+		* Refactored Table display
+		* Refactored Graph display
+* Version 1 - april 2018
+	* POC W3C Custom Elements for Table and Graph
+* Version 0 - February 2018
+	* POC HTTP Integration PHP to MySQL Database Schema
 
 ## Why ITpings was created
 

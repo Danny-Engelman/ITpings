@@ -55,13 +55,13 @@ function sendEmail($to, $subject, $message)
  * @param $sensor_name
  * @param $sensor_value
  **/
-function check_Button_Event_Trigger_For_Sensor($sensor_name, $sensor_value)
+function process_Sensor_ButtonClick($sensor_name, $sensor_value)
 {
     global $request;
     $dev_id = $request[TTN_dev_id];
 
     $IS_CAYENNE_BUTTON_CLICKED = ($sensor_name === TTN_Cayenne_digital_in_1 && $sensor_value === 1);
-    $IS_TTNNODE_BUTTON_CLICKED = ($sensor_name === 'event' && $sensor_value === 'button');
+    $IS_TTNNODE_BUTTON_CLICKED = ($sensor_name === TTN_TTNnode_event && $sensor_value === TTN_TTNnode_event_button);
 
     $IS_BUTTON_CLICKED = ($IS_CAYENNE_BUTTON_CLICKED OR $IS_TTNNODE_BUTTON_CLICKED);
 
@@ -74,53 +74,178 @@ function check_Button_Event_Trigger_For_Sensor($sensor_name, $sensor_value)
         //$msg = "Button $dev_id was clicked, at $date";
         //sendEmail("someone@world.com", $msg, $msg);
 
-        call_IFTTT_Webhook('ttn_button_clicked', 'cwmYqAicGxSfDWLOO6MZSa', "Button $dev_id was clicked, at $date");
+        call_IFTTT_Webhook('ttn_button_clicked', IFTTT_KEY, "Button $dev_id was clicked, at $date");
 
         insert_TTN_Event(ENUM_EVENTTYPE_Trigger, 'ButtonClicked', $dev_id);
     }
 }
 
 /**
- * convert different sensor outputs to same values
- * eg: For Battery powerlevel Cayenne gives us 4.16 and TTN 4160
+ * process Cayenne or TTN style accelerometer,
+ * Cayenne is x,y,z displacement
+ * TTN only says event=motion
  *
- * @param $sensor_ID
  * @param $sensor_name
  * @param $sensor_value
- * @return float|int
  */
-function process_SensorValue($sensor_ID, $sensor_name, $sensor_value)
+function process_Sensor_Accelerometer($sensor_name, $sensor_value)
 {
     global $request;
     $pingID = $request[PRIMARYKEY_Ping];
+    $dev_id = $request[TTN_dev_id];
+
+    $moved_x = 0;
+    $moved_y = 0;
+    $moved_z = 0;
+    /** Convert nested objects (like TTN x,y,z movements to a CSV String **/
+    $sensor_value_String = '';
+    if (is_array($sensor_value)) $sensor_value_String = implode(",", $sensor_value);
 
     switch ($sensor_name) {
-
-        case 'battery': // standard TTN (NON-Cayenne) Sketch/encoding from NNNN number to decimal X.yyy
-            $batteryPower = (int)$sensor_value;
-            if ($batteryPower > 1000) $sensor_value = $batteryPower / 1000;
+        case TTN_Cayenne_accelerometer:
+            $moved_x = $sensor_value["x"];
+            $moved_y = $sensor_value["y"];
+            $moved_z = $sensor_value["z"];
+            insert_TTN_Event(ENUM_EVENTTYPE_Trigger, 'Cayenne Device Moved: ' . $dev_id, $sensor_value_String);
+            break;
+        case TTN_TTNnode_event:
+            insert_TTN_Event(ENUM_EVENTTYPE_Trigger, 'TTN Motion: ' . $dev_id, $sensor_value);
+            $moved_x = 1;
+            break;
+        default:
+            $moved_x = 21;
             break;
 
-        case 'event':
-            if ($sensor_value === 'interval') return false; // do not record event/interval from TTN Node
+    }
+    SQL_INSERT(TABLE_DATA_ACCELEROMETER, [$pingID, $request[PRIMARYKEY_Device], $moved_x, $moved_y, $moved_z]);
+    insert_TTN_Event(ENUM_EVENTTYPE_Trigger, 'Move: ' . $sensor_name . ' dev:' . $dev_id, $sensor_value_String);
+}
+
+
+/**
+ * process Battery, save to dedicated DATA_BATTERY table
+ * @param $sensor_name
+ * @param $sensor_value
+ */
+function process_Sensor_Battery($sensor_name, $sensor_value)
+{
+    global $request;
+    $pingID = $request[PRIMARYKEY_Ping];
+    $dev_id = $request[TTN_dev_id];
+
+    $batteryPower = (int)$sensor_value;
+
+    /** standard TTN (NON-Cayenne) Sketch/encoding from NNNN number to decimal X.yyy **/
+    if ($sensor_name === TTN_TTNnode_battery and $batteryPower > 1000) $sensor_value = $batteryPower / 1000;
+
+    SQL_INSERT(TABLE_DATA_BATTERY, [$pingID, $request[PRIMARYKEY_Device], $sensor_value]);
+}
+
+/**
+ * process Temperature, save to dedicated DATA_TEMPERATURE table
+ * @param $sensor_name
+ * @param $sensor_value
+ */
+function process_Sensor_Temperature($sensor_name, $sensor_value)
+{
+    global $request;
+    $pingID = $request[PRIMARYKEY_Ping];
+    $dev_id = $request[TTN_dev_id];
+
+    SQL_INSERT(TABLE_DATA_TEMPERATURE, [$pingID, $request[PRIMARYKEY_Device], $sensor_value]);
+}
+
+/**
+ * process Light, save to dedicated DATA_LUMINOSITY table
+ * @param $sensor_name
+ * @param $sensor_value
+ */
+function process_Sensor_Light($sensor_name, $sensor_value)
+{
+    global $request;
+    $pingID = $request[PRIMARYKEY_Ping];
+    $dev_id = $request[TTN_dev_id];
+
+    if ($sensor_name === TTN_TTNnode_light) $sensor_value = $sensor_value * 10;
+
+    SQL_INSERT(TABLE_DATA_LUMINOSITY, [$pingID, $request[PRIMARYKEY_Device], $sensor_value]);
+}
+
+/**
+ * convert different sensor outputs to same values
+ * eg: For Battery powerlevel Cayenne gives us 4.16 and TTN 4160
+ *
+ * @param $sensor_name
+ * @param $sensor_value
+ */
+function process_One_Sensor_Value($sensor_name, $sensor_value)
+{
+    global $request;
+    $pingID = $request[PRIMARYKEY_Ping];
+    $dev_id = $request[TTN_dev_id];
+
+    $STORE_AS_GENERIC_SENSOR = FALSE;
+
+    switch ($sensor_name) {
+        /** SENSOR: BATTERY **/
+        case TTN_Cayenne_analog_in_4_Battery:
+        case TTN_TTNnode_battery:
+            process_Sensor_Battery($sensor_name, $sensor_value);
             break;
 
-        case 'temperature':
+        /** SENSOR: TEMPERATURE **/
+        case TTN_TTNnode_temperature:
         case TTN_Cayenne_temperature:
-            SQL_INSERT(TABLE_TEMPERATURE, [$pingID, $request[PRIMARYKEY_Device], $sensor_value]);
-            /** When returning true the value is NOT stored in Table_SensorValues (below) **/
-            //return true;
+            process_Sensor_Temperature($sensor_name, $sensor_value);
             break;
+
+        /** SENSOR: LIGHT **/
+        case TTN_TTNnode_light:
+        case TTN_Cayenne_luminosity:
+            process_Sensor_Light($sensor_name, $sensor_value);
+            break;
+
+        /** SENSOR: ACCELEROMETER **/
+        case TTN_Cayenne_accelerometer:
+            process_Sensor_Accelerometer($sensor_name, $sensor_value);
+            break;
+
+        /** SENSOR: BUTTON **/
+        case TTN_Cayenne_digital_in_1:
+            process_Sensor_ButtonClick($sensor_name, $sensor_value);
+            break;
+
+        /** SENSOR: TTN NODE EVENTS **/
+        case TTN_TTNnode_event:
+            switch ($sensor_value) {
+                case /** INTERVAL **/
+                TTN_TTNnode_event_interval:
+                    break;
+                case  /** MOTION **/
+                TTN_TTNnode_event_motion:
+                    process_Sensor_Accelerometer($sensor_name, $sensor_value);
+                    /** When returning true the value is NOT stored in Table_SensorValues (below) **/
+                    break;
+                case  /** BUTTON **/
+                TTN_TTNnode_event_button:
+                    process_Sensor_ButtonClick($sensor_name, $sensor_value);
+                    /** When returning true the value is NOT stored in Table_SensorValues (below) **/
+                    break;
+                default:
+                    insert_TTN_Event(ENUM_EVENTTYPE_Log, 'TTN Event:' . $sensor_value, $dev_id);
+                    $STORE_AS_GENERIC_SENSOR = TRUE;
+                    break;
+            }
 
         default:
+            $STORE_AS_GENERIC_SENSOR = TRUE;
             break;
     }
 
-    check_Button_Event_Trigger_For_Sensor($sensor_name, $sensor_value);
-
-    SQL_INSERT(TABLE_SENSORVALUES, [$pingID, Valued($sensor_ID), Quoted($sensor_value)]);
-
-    return $sensor_value;
+    IF ($STORE_AS_GENERIC_SENSOR) {
+        $sensor_ID = process_Existing_Or_New_Sensor($sensor_name);
+        SQL_INSERT(TABLE_SENSORVALUES, [$pingID, Valued($sensor_ID), Quoted($sensor_value)]);
+    }
 }
 
 //endregion == CUSTOMIZABLE SENSOR TRIGGERS =======================================================

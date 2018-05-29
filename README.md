@@ -11,11 +11,21 @@ For beginner and advanced developers:
 
 **MQTT (publish/subscribe)** was developed for low bandwidth, low power communication between devices.
 The MQTT Broker **pushes** data to the client on an (always) open TCP connection
-[https://www.hivemq.com/blog/how-to-get-started-with-mqtt](https://www.hivemq.com/blog/how-to-get-started-with-mqtt)  
-► MQTT requires authentication **per** device
+
+► MQTT requires authentication **PER** device
+
+See: [How to get started with MQTT](https://www.hivemq.com/blog/how-to-get-started-with-mqtt)  
+
 
 With an **HTTP (request/response) Integration** the (TTN) Broker **pushes** all data to a Webhook/Endpoint.  
-► **No** authentication (per device) required 
+
+► **No** authentication required 
+
+### MQTT Front-End
+
+A Front-End build using MQTT gives immediate responses.
+
+ITpings uses traditional short-polling, so has some latency. (see more below)
 
 ## Use ITpings HTTP Integration and Dashboard in (under) 5 minutes
 
@@ -82,7 +92,9 @@ Permission is hereby granted, free of charge, to any person obtaining a copy of 
 **► The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software ◄**
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
 <hr>   
+
 # ITpings Front-End Dashboard with Live data
 
 The MySQL Database Schema is the major part of this application.
@@ -127,10 +139,16 @@ Open the F12 Dev Console to see what the Dashboard does:
 ## (My)SQL Database schema
 
 The [**TTN HTTP Intergration sends a JSON formatted POST request**](https://www.thethingsnetwork.org/docs/applications/http/) about Applications, Devices, Gateways and Sensor data to the PHP script.  
-This **is** Relational Data; so a SQL database is a logical choice (Or so I was educated in the late 80s)
+This **is** Relational Data; so a SQL database seems a logical choice. Fine for a couple of Megabytes a day.
 
 I considered NoSQL solutions (have used several in projects)  
 But in the end the hardest part with SQL is creating the Schema... which ITpings does for you  
+
+For tracking thousands of devices, all generating Gigabytes a day, you really want to use another database type: 
+[When do I need a Time Series database](https://blog.timescale.com/what-the-heck-is-time-series-data-and-why-do-i-need-a-time-series-database-dcf3b1b18563)
+
+
+[List of Time Series databases](https://misfra.me/2016/04/09/tsdb-list/)
 
 ![](https://i.imgur.com/R4qTVPu.jpg)
 
@@ -282,11 +300,21 @@ A long.. long.. list of IoT related tools
 ### Further reading
 
 * https://mongoose-os.com/blog/why-mqtt-is-getting-so-popular-in-iot/
+* https://www.kevinsidwar.com/iot/2017/8/24/mqtt-broker-options-from-amazon-microsoft-and-google
+* Learnings from running Ghost for 5 years [https://blog.ghost.org/5/]()
 
-# Forking ITpings Building 
+# Build an ITpings Fork 
 
+No complex Grunt like builts. 
+
+Edit the files, upload them and your ready to go.
+
+If you do want to minify code, use uglify-es (for ES6 code):
+
+ 
 ### Uglify-ES options
-add ES6 CustomElements to ``../tools/domprops.json`` file:
+
+(if not defined yet) add ES6 CustomElements to ``../tools/domprops.json`` file:
 
 ``
     "customElements",
@@ -298,6 +326,32 @@ add ES6 CustomElements to ``../tools/domprops.json`` file:
     "disconnectedCallback",
     "adoptedCallback"
 ``
+
+#### file: uglify-config.json
+
+```
+	{
+	  "compress": {
+	    "drop_console": true,
+	    "dead_code": true,
+	    "unused": true,
+	    "passes": 2,
+	    "hoist_funs": true,
+	    "hoist_props": true,
+	    "ecma": 6,
+	    "sequences": true,
+	    "properties": true,
+	    "conditionals": true,
+	    "comparisons": true,
+	    "booleans": true,
+	    "evaluate": true,
+	    "loops": true,
+	    "if_return": true,
+	    "join_vars": true,
+	    "collapse_vars": false
+	  }
+	}
+``` 
 
 ### Adding Triggers to ITpings_sensor_triggers.php
 

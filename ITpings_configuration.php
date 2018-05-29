@@ -41,11 +41,6 @@ define('SQL_LIMIT_DEFAULT', 30);
 // eg. 3 Devices each pinging every minute = 3*60 = 180 pings (1 hour) will be saved
 define('PURGE_PINGCOUNT', 180);
 
-// MySQL version 5.6.4 with DATETIME(6) is required to save ping.meta_time in Time with milliseconds
-// https://dev.mysql.com/doc/refman/5.6/en/fractional-seconds.html
-// See TYPE_TIME_DATETIME below
-
-
 // Not quite sure yet how to deal with Altitude
 // ping metadata location info is stored in a separate Table __locations
 // to supress reports for different Altitude for a given lat/lon location set to FALSE
@@ -92,8 +87,11 @@ define('TABLE_SENSORS', TABLE_PREFIX . 'sensors');
 define('TABLE_SENSORVALUES', TABLE_PREFIX . 'sensorvalues');
 
 // Data Tables
-define('TABLE_TEMPERATURE', TABLE_PREFIX . 'data_temperature');
-define('TABLE_LUMINOSITY', TABLE_PREFIX . 'data_luminosity');
+define('TABLE_DATA_TEMPERATURE', TABLE_PREFIX . 'data_temperature');
+define('TABLE_DATA_LUMINOSITY', TABLE_PREFIX . 'data_luminosity');
+define('TABLE_DATA_BATTERY', TABLE_PREFIX . 'data_battery');
+
+define('TABLE_DATA_ACCELEROMETER', TABLE_PREFIX . 'data_accelerometer');
 
 // All Tables, order complies with referential integrity, so DROP TABLE is executed in correct order
 $_ITPINGS_TABLES = array(
@@ -135,6 +133,8 @@ define('PRIMARYKEY_POSTrequests', PRIMARYKEY_PREFIX . 'postid');
 define('ITPINGS_POST_body', 'body');
 $_DBFIELD_POST_BODY = [ITPINGS_POST_body, 'VARCHAR(4048)', 'Bare POST body'];
 
+
+
 define('PRIMARYKEY_Origin', PRIMARYKEY_PREFIX . 'originid');
 
 define('PRIMARYKEY_Application', PRIMARYKEY_PREFIX . 'appid');
@@ -147,7 +147,6 @@ define('PRIMARYKEY_ApplicationDevice', PRIMARYKEY_PREFIX . 'appdevid');
 $_DBFIELD_APPLICATION_DEVICE = [PRIMARYKEY_ApplicationDevice, TYPE_FOREIGNKEY, 'PrimaryKey:' . TABLE_APPLICATIONDEVICES];
 
 define('PRIMARYKEY_Gateway', PRIMARYKEY_PREFIX . 'gtwid');
-$_DBFIELD_GATEWAY = [PRIMARYKEY_Gateway, TYPE_FOREIGNKEY, 'PrimaryKey:' . TABLE_GATEWAYS];
 
 define('PRIMARYKEY_Frequency', PRIMARYKEY_PREFIX . 'frqid');
 
@@ -157,6 +156,7 @@ define('PRIMARYKEY_Datarate', PRIMARYKEY_PREFIX . 'drid');
 
 define('PRIMARYKEY_Codingrate', PRIMARYKEY_PREFIX . 'crid');
 
+/** Device location AND Gateway location **/
 define('PRIMARYKEY_Location', PRIMARYKEY_PREFIX . 'locid');
 $_DBFIELD_LOCATION = [PRIMARYKEY_Location, TYPE_FOREIGNKEY, 'PrimaryKey:' . TABLE_LOCATIONS];
 
@@ -166,18 +166,32 @@ $_DBFIELD_PRIMARYKEY_PING = [PRIMARYKEY_Ping, TYPE_FOREIGNKEY, 'PrimaryKey:' . T
 define('PRIMARYKEY_Sensor', PRIMARYKEY_PREFIX . 'sensorid');
 $_DBFIELD_PRIMARYKEY_SENSOR = [PRIMARYKEY_Sensor, TYPE_FOREIGNKEY, 'PrimaryKey:' . TABLE_SENSORS];
 
+
+
 //region ===== ITPINGS AND (TTN) THE THINGS NETWORK JSON FIELDNAMES ===============================
 
+//TTN Node Sensor names
+define('TTN_TTNnode_light', 'light');
+define('TTN_TTNnode_battery', 'battery');
+define('TTN_TTNnode_accelerometer', 'accelerometer');
+define('TTN_TTNnode_temperature', 'temperature');
+define('TTN_TTNnode_event', 'event');
+define('TTN_TTNnode_event_button', 'button');
+define('TTN_TTNnode_event_interval', 'interval');
+define('TTN_TTNnode_event_motion', 'motion');
+
 //Cayenne LPP Sensor names
-define('TTN_Cayenne_accelerometer', 'accelerometer_7');
-define('TTN_Cayenne_analog_in', 'analog_in_4');
-define('TTN_Cayenne_digital_in_1', 'digital_in_1');
-define('TTN_Cayenne_digital_in_2', 'digital_in_2');
-define('TTN_Cayenne_digital_in_3', 'digital_in_3');
-define('TTN_Cayenne_luminosity', 'luminosity_6');
-define('TTN_Cayenne_temperature', 'temperature_5');
+define('TTN_Cayenne_digital_in_1', 'digital_in_1');             // 1 = isButtonpressed()
+define('TTN_Cayenne_digital_in_2', 'digital_in_2');             // 1 = isUSBConnected()
+define('TTN_Cayenne_digital_in_3', 'digital_in_3');             // 1 = isMoving()
+define('TTN_Cayenne_analog_in_4_Battery', 'analog_in_4');       // Battery
+define('TTN_Cayenne_analog_in_7_ButtonDuration', 'analog_in_7');// new LLP february 2018
+define('TTN_Cayenne_temperature', 'temperature_5');             // Temperature
+define('TTN_Cayenne_luminosity', 'luminosity_6');               // Light
+define('TTN_Cayenne_accelerometer', 'accelerometer_7');         // Movement
 
 
+// Declare $_DBFIELD Arrays to be used in Table creation statements
 define('TTN_app_id', 'app_id');
 define('ITPINGS_APPLICATION_ID', TTN_app_id);
 $_DBFIELD_APPLICATION_ID = [ITPINGS_APPLICATION_ID, TYPE_VARCHAR_ID_FIELD, "TTN Application ID (name)"];
@@ -226,7 +240,8 @@ $_DBFIELD_PINGED_GATEWAY_TIMESTAMP = [ITPINGS_TIMESTAMP, 'INT UNSIGNED', 'TTN Ga
 define('TTN_time', 'time');
 define('ITPINGS_TIME', TTN_time);
 
-// standard DATETIME does not store microseconds, DATETIME(6) does, but is not supported in pre MySQL 5.6 versions
+// standard DATETIME does not store fractional microseconds, DATETIME(6) does, but that format is not supported in pre MySQL 5.6 versions
+// https://dev.mysql.com/doc/refman/5.6/en/fractional-seconds.html
 define('TYPE_TIME_COMMENT', 'converted TTN time WITHOUT FRACTION IN OLDER MySQL server!');
 $_DBFIELD_ITPINGS_TIME = [ITPINGS_TIME, 'DATETIME', TYPE_TIME_COMMENT];
 //define('TYPE_ITPINGS_TIME', 'VARCHAR(30)');       // "2018-01-25T11:40:43.427237826Z" = 30 characters
@@ -296,8 +311,7 @@ $_DBFIELD_SENSORNAME = [ITPINGS_SENSORNAME, 'VARCHAR(256)', "TTN Payload key"]; 
 define('ITPINGS_SENSORVALUE', 'sensorvalue');
 $_DBFIELD_SENSORVALUE = [ITPINGS_SENSORVALUE, 'VARCHAR(256)', 'TTN Payload value'];      // key value in JSON payload
 
-define('ITPINGS_SENSOR_TEMPERATURE_VALUE', 'value');
-$_DBFIELD_SENSOR_TEMPERATURE_VALUE = [ITPINGS_SENSOR_TEMPERATURE_VALUE, 'DECIMAL(3,1)', 'Temperature'];
+define('ITPINGS_SENSOR_VALUE', 'value');
 
 /**
  * Foreign keys are not for performance,
@@ -388,9 +402,11 @@ define('VIEWNAME_SENSORVALUES_UPDATE', TABLE_PREFIX . 'SensorValuesUpdate'); // 
 define('VIEWNAME_GATEWAYS', TABLE_PREFIX . 'Gateways');
 define('VIEWNAME_PINGEDDEVICES', TABLE_PREFIX . 'PingedDevices');
 define('VIEWNAME_PINGEDGATEWAYS', TABLE_PREFIX . 'PingedGateways');
+
 /** New in #alfa 2 , dedicated tables for better performance **/
-define('VIEWNAME_TEMPERATURE', TABLE_PREFIX . 'Temperature');
-define('VIEWNAME_LUMINOSITY', TABLE_PREFIX . 'Luminosity');
+define('VIEWNAME_DATA_TEMPERATURE', TABLE_PREFIX . 'Temperature');
+define('VIEWNAME_DATA_LUMINOSITY', TABLE_PREFIX . 'Luminosity');
+define('VIEWNAME_DATA_BATTERY', TABLE_PREFIX . 'Battery');
 
 // Loop all names in front-end query check
 // and Loop all names in DROP VIEW action
@@ -401,7 +417,11 @@ $_ITPINGS_VIEWNAMES = [
     , VIEWNAME_SENSORVALUES_UPDATE
     , VIEWNAME_GATEWAYS
     , VIEWNAME_PINGEDDEVICES
-    , VIEWNAME_PINGEDGATEWAYS];
+    , VIEWNAME_PINGEDGATEWAYS
+    , VIEWNAME_DATA_TEMPERATURE
+    , VIEWNAME_DATA_LUMINOSITY
+    , VIEWNAME_DATA_BATTERY
+];
 
 //endregion == VIEW AND QUERY CONFIGURATION =======================================================
 
@@ -460,14 +480,19 @@ $_VALID_QUERY_PARAMETERS = [
 ];
 
 
-//PREDEFINED QUERIES
-define('NO_SQL_QUERY', 'none');
-define('SQL_QUERY_ApplicationDevices', 'Devices');
-define('SQL_QUERY_DatabaseInfo_ITpings_Tables', 'DBInfo');
-define('SQL_QUERY_RecentIDs', 'IDs'); // smallest JSON payload as possible
-define('SQL_QUERY_RecentPingID', 'PingID'); // smallest JSON payload as possible
-define('SQL_QUERY_Ping', 'ping'); // display single POST ping
-
 //endregion == DATABASE SCHEMA AND CONFIGURATION ==================================================
 
 define('EMPTY_STRING', '');
+
+//Keys in JSON response
+define('QUERYKEY_ip', 'ip');
+define('QUERYKEY_mysqlversion', 'mysqlversion');
+define('QUERYKEY_timezone', 'data_default_timezone');
+define('QUERYKEY_rowcount', 'rowcount');
+define('QUERYKEY_sql', 'sql');
+define('QUERYKEY_messages', 'messages');
+define('QUERYKEY_errors', 'errors');
+define('QUERYKEY_maxids', 'maxids');
+define('QUERYKEY_querytime', 'querytime');
+define('QUERYKEY_skipcount', 'skipcount');
+define('QUERYKEY_result', 'result');

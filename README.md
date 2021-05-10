@@ -1,3 +1,7 @@
+**I now longer maintain this Repo**
+
+<hr>
+
 # ITpings : _Just Give Me The Data_
 
 For beginner and advanced developers:
